@@ -56,6 +56,14 @@ export default class Room {
   }
 
   /**
+   * Returns a list of usernames of players in this room
+   * @returns 
+   */
+  playerNames(): string[] {
+    return this.players.map(p => p.username);
+  }
+
+  /**
    * Removes this room from the server state. Room must be empty prior to destroying.
    */
   destroy(): void {

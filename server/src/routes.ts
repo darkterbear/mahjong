@@ -1,8 +1,9 @@
 import { Application } from 'express';
+import { Server } from 'socket.io';
 import Player from '@game/Player';
 import Room from '@game/Room';
 
-export default function routes(app: Application): void {
+export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
     const { username } = req.body;
     const id = req.sessionID;
@@ -34,7 +35,9 @@ export default function routes(app: Application): void {
     const player = new Player(id, username);
     player.joinRoom(room);
 
-    res.json(room.players.map(p => p.username));
+    io.to(room.code).emit('update_players', room.playerNames(), room.leader?.username);
+
+    res.json({ players: room.playerNames(), leader: room.leader?.username });
   });
   
 }

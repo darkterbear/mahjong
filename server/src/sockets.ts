@@ -4,10 +4,11 @@ import http from 'http';
 import { RequestHandler } from 'express';
 import sharedSession from 'express-socket.io-session';
 import Player from '@game/Player';
+import InterruptingAction from '@game/InterruptingAction';
 
 export default function sockets(
   httpServer: http.Server, 
-  sessionMiddleware: RequestHandler): void {
+  sessionMiddleware: RequestHandler): Server {
     
   const io = new Server(httpServer);
   io.use(sharedSession(sessionMiddleware, {
@@ -28,5 +29,23 @@ export default function sockets(
 
     socket.join(player.room.code);
     player.socket = socket;
+
+    socket.on('disconnect', () => {
+      const room = player.room;
+      player.destroy();
+
+      // If player was in non-empty room, send update_players
+      if (room) {
+        io.to(room.code).emit('update_players', room.playerNames(), room.leader?.username);
+
+        // If was in game, no longer in game
+        room.deck = [];
+        room.turn = -1;
+        room.pendingAction = InterruptingAction.NONE;
+        room.timer = undefined;
+      }
+    });
   });
+
+  return io;
 }

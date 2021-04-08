@@ -23,8 +23,8 @@ app.use(sessionMiddleware);
 
 const httpServer = http.createServer(app);
 
-sockets(httpServer, sessionMiddleware);
-routes(app);
+const io = sockets(httpServer, sessionMiddleware);
+routes(app, io);
 
 httpServer.listen(PORT, () => {
   console.log('Mahjong Server listening on port ' + PORT);
