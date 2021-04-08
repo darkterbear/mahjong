@@ -1,4 +1,5 @@
 import Tile from '@game/Tile';
+import { Socket } from 'socket.io';
 import Room from './Room';
 
 export default class Player {
@@ -8,6 +9,7 @@ export default class Player {
   handConcealed: Tile[];
   handExposed: Tile[];
   discarded: Tile[];
+  socket?: Socket;
 
   private static players: Map<string, Player> = new Map();
 

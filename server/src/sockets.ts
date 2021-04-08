@@ -3,6 +3,7 @@ import { Socket, Server } from 'socket.io';
 import http from 'http';
 import { RequestHandler } from 'express';
 import sharedSession from 'express-socket.io-session';
+import Player from '@game/Player';
 
 export default function sockets(
   httpServer: http.Server, 
@@ -14,13 +15,18 @@ export default function sockets(
   }));
 
   io.on('connection', (socket: Socket) => {
-    console.log(socket.handshake.sessionID);
-    // socket.emit('id', socket.id);
+    // User must create/join room before connecting to socket
+    const id = socket.handshake.sessionID;
+    if (!id) {
+      return socket.disconnect(true);
+    }
 
-    // socket.on('create_room', username => {
-    //   const player = new Player(socket.id, username);
-    //   players.set(socket.id, player);
-    //   rooms.set(socket.id, new Room(player));
-    // });
+    const player = Player.getPlayer(id);
+    if (!player || !player.room) {
+      return socket.disconnect(true);
+    }
+
+    socket.join(player.room.code);
+    player.socket = socket;
   });
 }
