@@ -49,6 +49,13 @@ export default class Room {
   }
 
   /**
+   * Returns whether or not the room has a game in progress (deck has tiles)
+   */
+  inGame(): boolean {
+    return this.deck.length > 0;
+  }
+
+  /**
    * Removes this room from the server state. Room must be empty prior to destroying.
    */
   destroy(): void {

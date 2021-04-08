@@ -23,10 +23,18 @@ export default function routes(app: Application): void {
       return res.status(404).end();
     }
 
+    if (room.players.length >= 4) {
+      return res.status(400).end();
+    }
+
+    if (room.inGame()) {
+      return res.status(400).end();
+    }
+
     const player = new Player(id, username);
     player.joinRoom(room);
 
-    res.status(200).end();
+    res.json(room.players.map(p => p.username));
   });
   
 }
