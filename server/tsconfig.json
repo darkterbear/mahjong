@@ -10,6 +10,9 @@
     "paths": {
       "@game/*": [
         "game/*"
+      ],
+      "@utils": [
+        "utils/index.ts"
       ]
     },
     "typeRoots": [

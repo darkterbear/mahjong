@@ -1,9 +1,6 @@
-import Player from '@game/Player';
-import Room from '@game/Room';
 import cors from 'cors';
 import express from 'express';
 import session from 'express-session';
-import sharedSession from 'express-socket.io-session';
 import http from 'http';
 import routes from './routes';
 import sockets from './sockets';
@@ -26,13 +23,8 @@ app.use(sessionMiddleware);
 
 const httpServer = http.createServer(app);
 
-// SERVER STATE
-// Maps player ids to Players and Rooms
-const players: Map<string, Player> = new Map();
-const rooms: Map<string, Room> = new Map();
-
-sockets(httpServer, sessionMiddleware, players, rooms);
-routes(app, players, rooms);
+sockets(httpServer, sessionMiddleware);
+routes(app);
 
 httpServer.listen(PORT, () => {
   console.log('Mahjong Server listening on port ' + PORT);

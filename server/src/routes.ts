@@ -2,17 +2,30 @@ import { Application } from 'express';
 import Player from '@game/Player';
 import Room from '@game/Room';
 
-export default function routes(
-  app: Application, 
-  players: Map<string, Player>, 
-  rooms: Map<string, Room>): void {
-
+export default function routes(app: Application): void {
   app.post('/create_room', (req, res) => {
-    console.log(req.sessionID);
-    // const { id, username } = req.body;
-    // const player = new Player(socket.id, username);
-    // players.set(socket.id, player);
-    // rooms.set(socket.id, new Room(player));
+    const { username } = req.body;
+    const id = req.sessionID;
+
+    const player = new Player(id, username);
+    const room = new Room();
+    player.joinRoom(room);
+
+    res.json({ code: room.code });
+  });
+
+  app.post('/join_room', (req, res) => {
+    const { username, code } = req.body;
+    const id = req.sessionID;
+
+    const room = Room.getRoom(code);
+    if (!room) {
+      return res.status(404).end();
+    }
+
+    const player = new Player(id, username);
+    player.joinRoom(room);
+
     res.status(200).end();
   });
   

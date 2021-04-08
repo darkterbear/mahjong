@@ -1,16 +1,12 @@
 
 import { Socket, Server } from 'socket.io';
 import http from 'http';
-import Player from '@game/Player';
-import Room from '@game/Room';
 import { RequestHandler } from 'express';
 import sharedSession from 'express-socket.io-session';
 
 export default function sockets(
   httpServer: http.Server, 
-  sessionMiddleware: RequestHandler,
-  players: Map<string, Player>, 
-  rooms: Map<string, Room>): void {
+  sessionMiddleware: RequestHandler): void {
     
   const io = new Server(httpServer);
   io.use(sharedSession(sessionMiddleware, {
