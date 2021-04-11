@@ -1,11 +1,23 @@
-import React, { Component } from 'react'
+import { useState } from 'react'
+import { useHistory } from 'react-router'
 import './MenuPage.scss'
 
 export function MenuPage() {
+  const [username, setUsername] = useState('')
+  const history = useHistory()
+
+  const joinRoom = () => {
+    history.push('/join', { username })
+  }
+
+  const createRoom = () => {
+    // TODO:
+  }
+
   return <div id="page">
     <h1>麻将</h1>
-    <input placeholder="Username"/>
-    <button>Create Room</button>
-    <button>Join Room</button>
+    <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"/>
+    <button onClick={createRoom}>Create Room</button>
+    <button onClick={joinRoom}>Join Room</button>
   </div>
 }
