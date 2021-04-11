@@ -1,20 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es6",
     "module": "commonjs",
-    "rootDir": "./src",
-    "outDir": "./build",
     "esModuleInterop": true,
-    "strict": true,
-    "baseUrl": "src",
-    "paths": {
-      "@game/*": [
-        "game/*"
-      ],
-      "@utils": [
-        "utils/index.ts"
-      ]
-    },
+    "target": "es6",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "outDir": "build",
+    "baseUrl": "./src",
     "typeRoots": [
       "src/types",
       "node_modules/@types"

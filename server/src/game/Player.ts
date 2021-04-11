@@ -1,4 +1,4 @@
-import Tile from '@game/Tile';
+import Tile from './Tile';
 import { Socket } from 'socket.io';
 import Room from './Room';
 
@@ -68,5 +68,49 @@ export default class Player {
     }
     
     Player.players.delete(this.id);
+  }
+
+  /**
+   * Gets this player's perspective of the game state:
+   * {
+   *    handConcealed: Tile[],
+   *    handExposed: Tile[],
+   *    discarded: Tile[],
+   *    turn: number,
+   *    pendingAction: ActionIntent (without the timer portion),
+   *    players: {
+   *      username: string,
+   *      handExposed: Tile[],
+   *      discarded: Tile[]
+   *    }
+   * }
+   */
+  getPerspectiveGameState(): any {
+    if (!this.room || !this.room.inGame()) {
+      throw new Error('Cannot get game state; player not in room, or room not in game');
+    }
+
+
+
+    const result = {
+      handConcealed: this.handConcealed,
+      handExposed: this.handExposed,
+      discarded: this.discarded,
+      turn: this.room.turn,
+      pendingAction: this.room.pendingAction as any,
+      players: this.room.players
+        .filter(p => p !== this)
+        .map(p => ({ 
+          username: p.username, 
+          handExposed: p.handExposed, 
+          discarded: p.discarded, 
+        })),
+    };
+
+    if (result.pendingAction) {
+      delete result.pendingAction.timeout;
+    }
+    
+    return result;
   }
 }

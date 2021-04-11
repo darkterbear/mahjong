@@ -3,8 +3,7 @@ import { Socket, Server } from 'socket.io';
 import http from 'http';
 import { RequestHandler } from 'express';
 import sharedSession from 'express-socket.io-session';
-import Player from '@game/Player';
-import InterruptingAction from '@game/InterruptingAction';
+import Player from './game/Player';
 
 export default function sockets(
   httpServer: http.Server, 
@@ -41,8 +40,7 @@ export default function sockets(
         // If was in game, no longer in game
         room.deck = [];
         room.turn = -1;
-        room.pendingAction = InterruptingAction.NONE;
-        room.timer = undefined;
+        room.pendingAction = undefined;
       }
     });
   });

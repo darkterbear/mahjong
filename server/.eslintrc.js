@@ -19,6 +19,6 @@ module.exports = {
     semi: ['error', 'always'],
     'comma-dangle': ['error', 'always-multiline'],
     indent: ['error', 2],
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-explicit-any': 0,
   },
 };

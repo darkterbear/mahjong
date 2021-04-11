@@ -1,15 +1,14 @@
-import InterruptingAction from '@game/InterruptingAction';
-import Player from '@game/Player';
-import Tile from '@game/Tile';
-import { randomCode } from '@utils';
+import Player from './Player';
+import Tile from './Tile';
+import { randomCode } from '../utils';
+import ActionIntent from './ActionIntent';
 export default class Room {
   code: string;
   players: Player[];
   leader?: Player;
   deck: Tile[];
   turn: number;
-  pendingAction: InterruptingAction;
-  timer?: NodeJS.Timeout;
+  pendingAction?: ActionIntent;
 
   private static rooms: Map<string, Room> = new Map();
 
@@ -43,7 +42,6 @@ export default class Room {
     this.players = [];
     this.deck = [];
     this.turn = -1;
-    this.pendingAction = InterruptingAction.NONE;
 
     Room.rooms.set(this.code, this);
   }
@@ -52,7 +50,7 @@ export default class Room {
    * Returns whether or not the room has a game in progress (deck has tiles)
    */
   inGame(): boolean {
-    return this.deck.length > 0;
+    return this.deck.length > 0 || this.players.some(p => p.handConcealed.length + p.handExposed.length > 0);
   }
 
   /**

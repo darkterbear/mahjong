@@ -1,8 +1,8 @@
 import { Application } from 'express';
 import { Server } from 'socket.io';
-import Player from '@game/Player';
-import Room from '@game/Room';
-import Tile from '@game/Tile';
+import Player from './game/Player';
+import Room from './game/Room';
+import Tile from './game/Tile';
 
 export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
@@ -65,6 +65,18 @@ export default function routes(app: Application, io: Server): void {
 
     // Send start game
     io.to(room.code).emit('start_game');
+  });
+
+  app.get('/get_game_state', (req, res) => {
+    const id = req.sessionID;
+    const player = Player.getPlayer(id);
+    const room = player?.room;
+
+    if (!room || !room.inGame()) {
+      return res.status(400).end();
+    }
+
+    res.json(player?.getPerspectiveGameState());
   });
   
 }
