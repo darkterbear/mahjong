@@ -7,10 +7,12 @@ export function MenuPage() {
   const history = useHistory()
 
   const joinRoom = () => {
+    if (!username) return
     history.push('/join', { username })
   }
 
   const createRoom = () => {
+    if (!username) return
     // TODO:
   }
 
