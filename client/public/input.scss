@@ -1,0 +1,45 @@
+$gray: #828282;
+$black: #333333;
+
+@font-face {
+	font-family: 'Grantipo';
+	src: url('assets/GrantipoBeta001-Regular.ttf');
+}
+
+@font-face {
+	font-family: 'Grantipo';
+  font-weight: bold;
+	src: url('assets/GrantipoBeta001-Bold.ttf');
+}
+
+html, body {
+	margin: 0;
+	padding: 0;
+	font-family: 'Grantipo';
+	width: 100%;
+	font-size: 16px;
+	height: 100%;
+	text-align: center;
+	overflow: hidden;
+}
+
+h1 {
+	font-size: 64px;
+}
+
+span {
+	font-size: 20px;
+}
+
+input {
+	font-family: Grantipo;
+	border: 2px solid $gray;
+	font-size: 16px;
+	text-align: center;
+}
+
+button {
+  background: $black;
+  color: white;
+  border: none;
+}
