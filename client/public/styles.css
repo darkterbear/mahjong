@@ -27,16 +27,31 @@ span {
 }
 
 input {
-  font-family: Grantipo;
+  height: calc(40px - 20px);
+  margin: 0.5rem;
+  padding: 0.5rem;
   border: 2px solid #828282;
+  font-family: Grantipo;
   font-size: 16px;
   text-align: center;
+  outline: none;
 }
 
 button {
+  height: calc(40px);
+  margin: 0.5rem;
+  padding: 0.5rem;
+  font-family: Grantipo;
+  font-size: 16px;
+  outline: none;
   background: #333333;
   color: white;
   border: none;
+  cursor: pointer;
+  transition: ease all 0.3s;
+}
+button:hover {
+  background: #555555;
 }
 
 /*# sourceMappingURL=styles.css.map */
