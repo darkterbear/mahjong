@@ -1,3 +1,4 @@
+$blue: #527aff;
 $gray: #828282;
 $black: #333333;
 $dark-gray: #555555;
@@ -30,6 +31,11 @@ h1 {
 
 span {
 	font-size: 20px;
+}
+
+a {
+  text-decoration: none;
+  color: $blue;
 }
 
 input {

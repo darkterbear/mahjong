@@ -26,6 +26,11 @@ span {
   font-size: 20px;
 }
 
+a {
+  text-decoration: none;
+  color: #527aff;
+}
+
 input {
   height: calc(40px - 20px);
   margin: 0.5rem;
