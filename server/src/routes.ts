@@ -8,7 +8,6 @@ export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
     const { username } = req.body;
     const id = req.sessionID;
-    console.log(id);
 
     // TODO: destroy player if doesnt connect to sockets within time
     const player = new Player(id, username);
@@ -21,7 +20,6 @@ export default function routes(app: Application, io: Server): void {
   app.post('/join_room', (req, res) => {
     const { username, code } = req.body;
     const id = req.sessionID;
-    console.log(id);
 
     const room = Room.getRoom(code);
     if (!room) {
@@ -40,7 +38,6 @@ export default function routes(app: Application, io: Server): void {
     const player = new Player(id, username);
     player.joinRoom(room);
 
-    console.log(room.playerNames(), room.leader?.username);
     io.to(room.code).emit('update_players', room.playerNames(), room.leader?.username);
 
     res.json({ players: room.playerNames(), leader: room.leader?.username });

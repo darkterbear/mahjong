@@ -20,7 +20,6 @@ export function LobbyPage() {
     // Connect to sockets, subscribe to update_players socket event
     connectSocket()
     socket.on('update_players', (players, leader) => {
-      console.log(players, leader)
       setPlayers(players)
       setLeader(leader)
     })

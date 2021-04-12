@@ -22,14 +22,12 @@ export default function sockets(
   io.on('connection', (socket: Socket) => {
     // User must create/join room before connecting to socket
     const id = socket.handshake.sessionID;
-    console.log('SOCKET CONNECTING ' + id);
     if (!id) {
       return socket.disconnect(true);
     }
 
     const player = Player.getPlayer(id);
     if (!player || !player.room) {
-      console.log('disconnected', player, player.room);
       return socket.disconnect(true);
     }
     
