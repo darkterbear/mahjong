@@ -23,6 +23,10 @@ export function LobbyPage() {
       setPlayers(players)
       setLeader(leader)
     })
+
+    socket.on('disconnect', () => {
+      history.replace('/')
+    })
   }, [])
 
   const handleStartGame = () => {

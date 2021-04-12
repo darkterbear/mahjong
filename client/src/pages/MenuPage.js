@@ -9,7 +9,7 @@ export function MenuPage() {
 
   const handleJoinRoom = () => {
     if (!username) return
-    history.push('/join', { username })
+    history.replace('/join', { username })
   }
 
   const handleCreateRoom = async () => {
@@ -17,7 +17,7 @@ export function MenuPage() {
     const res = await createRoom(username)
     if (res.ok) {
       const { code } = await res.json()
-      history.push('/lobby', { code, initialPlayers: [username], initialLeader: username, username })
+      history.replace('/lobby', { code, initialPlayers: [username], initialLeader: username, username })
     }
   }
 

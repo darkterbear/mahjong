@@ -21,7 +21,7 @@ export function JoinPage() {
     const res = await joinRoom(username, code)
     if (res.ok) {
       const { players, leader } = await res.json()
-      history.push('/lobby', { code, initialPlayers: players, initialLeader: leader, username })
+      history.replace('/lobby', { code, initialPlayers: players, initialLeader: leader, username })
     }
   }
 
