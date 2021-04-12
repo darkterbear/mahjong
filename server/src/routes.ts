@@ -6,9 +6,11 @@ import Tile from './game/Tile';
 
 export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
+    console.log(req.body);
     const { username } = req.body;
     const id = req.sessionID;
 
+    // TODO: destroy player if doesnt connect to sockets within time
     const player = new Player(id, username);
     const room = new Room();
     player.joinRoom(room);
@@ -17,6 +19,7 @@ export default function routes(app: Application, io: Server): void {
   });
 
   app.post('/join_room', (req, res) => {
+    console.log(req.body);
     const { username, code } = req.body;
     const id = req.sessionID;
 
@@ -33,6 +36,7 @@ export default function routes(app: Application, io: Server): void {
       return res.status(400).end();
     }
 
+    // TODO: destroy player if doesnt connect to sockets within time
     const player = new Player(id, username);
     player.joinRoom(room);
 

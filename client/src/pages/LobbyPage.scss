@@ -14,9 +14,18 @@ $dark-gray: #555555;
 
   button {
     width: 202px;
+    margin-top: 2rem;
   }
 
   .leader {
     color: $blue;
+  }
+
+  #code {
+    margin-bottom: 1.5rem;
+  }
+
+  p {
+    margin: 0.25rem;
   }
 }

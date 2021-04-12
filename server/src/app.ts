@@ -6,7 +6,6 @@ import routes from './routes';
 import sockets from './sockets';
 import { v4 as uuidv4 } from 'uuid';
 
-
 const PORT = 3000;
 
 const app = express();

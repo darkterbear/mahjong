@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
+import { joinRoom } from '../rest'
 import './JoinPage.scss'
 
 export function JoinPage() {
@@ -14,14 +15,17 @@ export function JoinPage() {
     return null
   }
 
-  const joinRoom = () => {
-    // TODO:
-    console.log(`${username} join room ${code}`)
+  const handleJoinRoom = async () => {
+    const res = await joinRoom(username, code)
+    if (res.ok) {
+      const { players, leader } = await res.json()
+      history.push('/lobby', { code, players, leader, username })
+    }
   }
 
   return <div id="page">
     <h1>Join a Room</h1>
     <input value={code} onChange={e => setCode(e.target.value)} placeholder="Room Code"/>
-    <button onClick={joinRoom}>Join Room</button>
+    <button onClick={handleJoinRoom}>Join Room</button>
   </div>
 }
