@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useHistory } from 'react-router'
-import { createRoom } from '../rest'
+import { createRoom } from '../api'
 import './MenuPage.scss'
 
 export function MenuPage() {
@@ -17,11 +17,11 @@ export function MenuPage() {
     const res = await createRoom(username)
     if (res.ok) {
       const { code } = await res.json()
-      history.push('/lobby', { code, players: [username], leader: username, username })
+      history.push('/lobby', { code, initialPlayers: [username], initialLeader: username, username })
     }
   }
 
-  return <div id="page">
+  return <div id="menu-page">
     <h1>麻将</h1>
     <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username"/>
     <button onClick={handleCreateRoom}>Create Room</button>

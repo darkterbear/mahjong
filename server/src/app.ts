@@ -4,21 +4,20 @@ import session from 'express-session';
 import http from 'http';
 import routes from './routes';
 import sockets from './sockets';
-import { v4 as uuidv4 } from 'uuid';
 
 const PORT = 3000;
 
 const app = express();
 const sessionMiddleware = session({
   secret: 'mahjong',
-  resave: false,
+  resave: true,
   saveUninitialized: true,
-  genid: () => uuidv4(),
+  // genid: () => uuidv4(),
 });
 
 app.use(express.json());
-app.use(cors());
 app.use(sessionMiddleware);
+app.use(cors({ origin: 'http://localhost:5000', credentials: true }));
 
 const httpServer = http.createServer(app);
 
