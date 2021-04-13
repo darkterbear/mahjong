@@ -90,8 +90,6 @@ export default class Player {
       throw new Error('Cannot get game state; player not in room, or room not in game');
     }
 
-
-
     const result = {
       handConcealed: this.handConcealed,
       handExposed: this.handExposed,

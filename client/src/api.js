@@ -26,3 +26,22 @@ export const joinRoom = (username, code) => {
     credentials: 'include'
   })
 }
+
+export const startGame = () => {
+  return fetch(BASE_URL + '/start_game', {
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    method: 'POST',
+    credentials: 'include'
+  })
+}
+
+export const getGameState = () => {
+  return fetch(BASE_URL + '/get_game_state', {
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    credentials: 'include'
+  })
+}

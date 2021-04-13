@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
-import { socket, connectSocket } from '../api'
+import { socket, connectSocket, startGame } from '../api'
 import './LobbyPage.scss'
 
 export function LobbyPage() {
@@ -24,13 +24,17 @@ export function LobbyPage() {
       setLeader(leader)
     })
 
+    socket.on('start_game', () => {
+      history.replace('/game')
+    })
+
     socket.on('disconnect', () => {
       history.replace('/')
     })
   }, [])
 
   const handleStartGame = () => {
-    // TODO:
+    startGame()
   }
 
   return <div id="lobby-page">
