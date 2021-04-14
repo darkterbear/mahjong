@@ -9,7 +9,7 @@ export function MenuPage() {
 
   const handleJoinRoom = () => {
     if (!username) return
-    history.replace('/join', { username })
+    history.push('/join', { username })
   }
 
   const handleCreateRoom = async () => {

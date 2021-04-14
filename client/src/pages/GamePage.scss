@@ -30,6 +30,21 @@ $dark-gray: #555555;
     }
   }
 
+  #my-discards {
+    display: flex;
+    flex-direction: row;
+
+    position: absolute;
+    bottom: 12rem;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    img {
+      width: 50px;
+      margin: 0 -5px;
+    }
+  }
+
   #my-turn-indicator {
     position: absolute;
     bottom: 2rem;
@@ -43,6 +58,22 @@ $dark-gray: #555555;
     
     position: absolute;
     left: 4rem;
+    top: 50%;
+    transform: translateY(-50%);
+
+    img {
+      height: 50px;
+      margin: -8px 0;
+      transform: rotate(90deg);
+    }
+  }
+
+  #l-discards {
+    display: flex;
+    flex-direction: column;
+    
+    position: absolute;
+    left: 8rem;
     top: 50%;
     transform: translateY(-50%);
 
@@ -76,6 +107,22 @@ $dark-gray: #555555;
     }
   }
 
+  #r-discards {
+    display: flex;
+    flex-direction: column-reverse;
+    
+    position: absolute;
+    right: 8rem;
+    top: 50%;
+    transform: translateY(-50%);
+
+    img {
+      height: 50px;
+      margin: -8px 0;
+      transform: rotate(-90deg);
+    }
+  }
+
   #r-username {
     position: absolute;
     right: 2rem;
@@ -89,6 +136,22 @@ $dark-gray: #555555;
 
     position: absolute;
     top: 4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    img {
+      width: 50px;
+      margin: 0 -5px;
+      transform: rotate(180deg);
+    }
+  }
+
+  #t-discards {
+    display: flex;
+    flex-direction: row-reverse;
+
+    position: absolute;
+    top: 8rem;
     left: 50%;
     transform: translateX(-50%);
     

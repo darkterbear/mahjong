@@ -16,7 +16,7 @@ export function GamePage() {
   const [pendingAction, setPendingAction] = useState(null)
   
   // List of the 3 other players, in left, top, right order
-  const [players, setPlayers] = useState([{}, {}, {}])
+  const [players, setPlayers] = useState(Array.from({ length: 3}, () => ({ username: '', handExposed: [], discarded: [] })))
 
   useEffect(async () => {
     // Fetch game state
@@ -39,7 +39,7 @@ export function GamePage() {
   const updateGameState = (state) => {
     setHandConcealed(state.handConcealed)
     setHandExposed(state.handExposed)
-    setDiscarded(state.setDiscarded)
+    setDiscarded(state.discarded)
     setTurn(state.turn)
     setPendingAction(state.pendingAction)
     setPlayers(state.players)
@@ -67,6 +67,11 @@ export function GamePage() {
         handConcealed.map((t, i) => <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
+    <div id="my-discards">
+      {
+        discarded.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+      }
+    </div>
     { turn >= 0 &&
       <span id="my-turn-indicator">{ turn === 3 ? 'Your turn!' : `${players[turn].username}'s turn`}</span>
     }
@@ -75,16 +80,31 @@ export function GamePage() {
         Array.from({ length: hiddenTileCount(2) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
     </div>
+    <div id="l-discards">
+      {
+        players[2].discarded.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+      }
+    </div>
     <span id="l-username">{players[2].username}</span>
     <div id="t-tiles">
       {
         Array.from({ length: hiddenTileCount(1) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
     </div>
+    <div id="t-discards">
+      {
+        players[1].discarded.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+      }
+    </div>
     <span id="t-username">{players[1].username}</span>
     <div id="r-tiles">
       {
         Array.from({ length: hiddenTileCount(0) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
+      }
+    </div>
+    <div id="r-discards">
+      {
+        players[0].discarded.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
     <span id="r-username">{players[0].username}</span>
