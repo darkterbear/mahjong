@@ -43,5 +43,16 @@ export function GamePage() {
         handConcealed.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
+    <div id="l-tiles">
+      {
+        Array.from({ length: 13 })
+      }
+    </div>
+    <div id="t-tiles">
+
+    </div>
+    <div id="r-tiles">
+
+    </div>
   </div>
 }

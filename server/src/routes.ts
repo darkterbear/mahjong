@@ -62,7 +62,6 @@ export default function routes(app: Application, io: Server): void {
 
     room.turn = 0;
     room.players[0].handConcealed.push(room.deck.pop() as Tile);
-    room.players[0].handConcealed.sort(Tile.comparator);
 
     res.status(200).end();
 

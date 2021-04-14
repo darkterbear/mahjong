@@ -71,6 +71,18 @@ export default class Player {
   }
 
   /**
+   * Gets the index of the player whose current turn it is, from this player's perspective.
+   */
+  getRelativeTurn(): number {
+    const thisIndex = this.room.players.indexOf(this);
+    const roomTurn = this.room.turn;
+
+    for (let i = 0; i < 4; i++) {
+      if ((thisIndex + i) % 4 === roomTurn) return i;
+    }
+  }
+
+  /**
    * Gets this player's perspective of the game state:
    * {
    *    handConcealed: Tile[],
@@ -94,7 +106,7 @@ export default class Player {
       handConcealed: this.handConcealed,
       handExposed: this.handExposed,
       discarded: this.discarded,
-      turn: this.room.turn,
+      turn: this.getRelativeTurn(),
       pendingAction: this.room.pendingAction as any,
       players: this.room.players
         .filter(p => p !== this)
