@@ -78,6 +78,7 @@ export default class Player {
     if (!this.handConcealed[index]) return;
     this.discarded.push(this.handConcealed.splice(index, 1)[0]);
     this.discarded = this.discarded.slice(Math.max(0, this.discarded.length - 5));
+    this.handConcealed.sort(Tile.comparator);
   }
 
   /**
