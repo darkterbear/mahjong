@@ -72,10 +72,17 @@ export default class Room {
     Room.rooms.delete(this.code);
   }
 
+  /**
+   * Sets turn to next player, draws a tile for them.
+   */
   nextTurn(): void {
     this.turn = (this.turn + 1) % 4;
+    this.players[this.turn].handConcealed.push(this.deck.pop());
   }
 
+  /**
+   * Emits a game state update to all players in the room.
+   */
   emitUpdates(): void {
     for (const p of this.players) {
       p.socket?.emit('game_state_update', p.getPerspectiveGameState());
