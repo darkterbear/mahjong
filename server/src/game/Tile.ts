@@ -1,9 +1,9 @@
 export enum Suit {
-  DRAGON,
-  WIND,
-  BAMBOO,
-  DOTS,
-  WAN
+  DRAGON = 'd',
+  WIND = 'f',
+  BAMBOO = 's',
+  DOTS = 't',
+  WAN = 'w'
 }
 
 export default class Tile {
@@ -13,6 +13,11 @@ export default class Tile {
   constructor(suit: Suit, value: number) {
     this.suit = suit;
     this.value = value;
+  }
+
+  static comparator(a: Tile, b: Tile): number {
+    if (a.suit !== b.suit) return 'stwfd'.indexOf(a.suit) - 'stwfd'.indexOf(b.suit);
+    return a.value - b.value;
   }
 
   static shuffledDeck(): Tile[] {

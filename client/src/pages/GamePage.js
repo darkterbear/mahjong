@@ -35,8 +35,13 @@ export function GamePage() {
     })
   }, [])
 
+
+
   return <div id="game-page">
-    <h1>Game</h1>
-    <p>{JSON.stringify(handConcealed)}</p>
+    <div id="my-tiles">
+      {
+        handConcealed.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+      }
+    </div>
   </div>
 }

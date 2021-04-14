@@ -57,11 +57,12 @@ export default function routes(app: Application, io: Server): void {
     
     // Deal hands
     for (const p of room.players) {
-      p.handConcealed = room.deck.splice(0, 13);
+      p.handConcealed = room.deck.splice(0, 13).sort(Tile.comparator);
     }
 
     room.turn = 0;
     room.players[0].handConcealed.push(room.deck.pop() as Tile);
+    room.players[0].handConcealed.sort(Tile.comparator);
 
     res.status(200).end();
 
