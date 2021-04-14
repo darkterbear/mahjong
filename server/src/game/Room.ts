@@ -71,4 +71,14 @@ export default class Room {
 
     Room.rooms.delete(this.code);
   }
+
+  nextTurn(): void {
+    this.turn = (this.turn + 1) % 4;
+  }
+
+  emitUpdates(): void {
+    for (const p of this.players) {
+      p.socket?.emit('game_state_update', p.getPerspectiveGameState());
+    }
+  }
 }

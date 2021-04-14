@@ -1,4 +1,5 @@
 import { Application } from 'express';
+import { Action } from './game/ActionIntent';
 import { Server } from 'socket.io';
 import Player from './game/Player';
 import Room from './game/Room';
@@ -81,4 +82,49 @@ export default function routes(app: Application, io: Server): void {
     res.json(player?.getPerspectiveGameState());
   });
   
+  app.post('/play_action', (req, res) => {
+    const id = req.sessionID;
+    const player = Player.getPlayer(id);
+    const room = player?.room;
+
+    if (!room || !room.inGame()) {
+      return res.status(400).end();
+    }
+
+    // Check it is player's turn
+    if (room.turn >= 0 && room.players[room.turn] !== player) {
+      return res.status(400).end();
+    }
+
+    /**
+     * {
+     *    type: number, // 0, 1, 2, 3; 0 for discard, others as Action enum
+     *    targetTiles: number[] // indices of target tiles
+     * }
+     */
+    const { type, targetTiles } = req.body;
+
+    switch(type) {
+    case 0:
+      // Discard tile
+      if (targetTiles.length !== 1) return res.status(400).end();
+      player.discard(targetTiles[0]);
+      room.nextTurn();
+      room.emitUpdates();
+      break;
+    case Action.CHOW:
+      // TODO
+      break;
+    case Action.PONG:
+      // TODO
+      break;
+    case Action.MAHJONG:
+      // TODO
+      break;
+    default:
+      res.status(400).end();
+    }
+
+    res.status(200).end();
+  });
 }

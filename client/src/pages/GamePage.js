@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHistory } from 'react-router'
-import { getGameState, socket } from '../api'
+import { getGameState, playAction, socket } from '../api'
 import './GamePage.scss'
 
 export function GamePage() {
@@ -25,20 +25,25 @@ export function GamePage() {
       history.replace('/')
       return
     }
+    updateGameState(await res.json())
 
-    const state = await res.json()
+    socket.on('game_state_update', (state) => {
+      updateGameState(state)
+    })
 
+    socket.on('disconnect', () => {
+      history.replace('/')
+    })
+  }, [])
+
+  const updateGameState = (state) => {
     setHandConcealed(state.handConcealed)
     setHandExposed(state.handExposed)
     setDiscarded(state.setDiscarded)
     setTurn(state.turn)
     setPendingAction(state.pendingAction)
     setPlayers(state.players)
-
-    socket.on('disconnect', () => {
-      history.replace('/')
-    })
-  }, [])
+  }
 
   const hiddenTileCount = (i) => {
     const p = players[i];
@@ -46,10 +51,20 @@ export function GamePage() {
     return 13 - p.handExposed.length * 3 + (1 ? turn === i : 0);
   }
 
+  /**
+   * Discards a tile that was clicked on, if it is this player's turn
+   * @param {number} i Index of tile to discard
+   * @returns void
+   */
+  const handleTileClick = (i) => {
+    if (turn !== 3) return;
+    playAction(0, [i])
+  }
+
   return <div id="game-page">
     <div id="my-tiles">
       {
-        handConcealed.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+        handConcealed.map((t, i) => <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
     { turn >= 0 &&

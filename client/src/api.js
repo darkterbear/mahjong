@@ -45,3 +45,14 @@ export const getGameState = () => {
     credentials: 'include'
   })
 }
+
+export const playAction = (type, targetTiles) => {
+  return fetch(BASE_URL + '/play_action', {
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    method: 'POST',
+    body: JSON.stringify({ type, targetTiles }),
+    credentials: 'include'
+  })
+}
