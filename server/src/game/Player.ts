@@ -78,7 +78,7 @@ export default class Player {
     const roomTurn = this.room.turn;
 
     for (let i = 0; i < 4; i++) {
-      if ((thisIndex + i) % 4 === roomTurn) return i;
+      if ((thisIndex + i + 1) % 4 === roomTurn) return i;
     }
   }
 

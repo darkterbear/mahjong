@@ -21,4 +21,52 @@ $dark-gray: #555555;
       margin: 0 -8px;
     }
   }
+
+  #l-tiles {
+    display: flex;
+    flex-direction: column;
+    
+    position: absolute;
+    left: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+
+    img {
+      height: 50px;
+      margin: -8px 0;
+      transform: rotate(90deg);
+    }
+  }
+
+  #r-tiles {
+    display: flex;
+    flex-direction: column-reverse;
+    
+    position: absolute;
+    right: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+
+    img {
+      height: 50px;
+      margin: -8px 0;
+      transform: rotate(-90deg);
+    }
+  }
+
+  #t-tiles {
+    display: flex;
+    flex-direction: row-reverse;
+
+    position: absolute;
+    top: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    
+    img {
+      width: 50px;
+      margin: 0 -5px;
+      transform: rotate(180deg);
+    }
+  }
 }
