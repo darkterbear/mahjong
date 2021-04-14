@@ -16,7 +16,7 @@ export function GamePage() {
   const [pendingAction, setPendingAction] = useState(null)
   
   // List of the 3 other players, in left, top, right order
-  const [players, setPlayers] = useState([])
+  const [players, setPlayers] = useState([{}, {}, {}])
 
   useEffect(async () => {
     // Fetch game state
@@ -42,7 +42,7 @@ export function GamePage() {
 
   const hiddenTileCount = (i) => {
     const p = players[i];
-    if (!p) return 0;
+    if (!p.handExposed) return 0;
     return 13 - p.handExposed.length * 3 + (1 ? turn === i : 0);
   }
 
@@ -52,20 +52,26 @@ export function GamePage() {
         handConcealed.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
+    { turn >= 0 &&
+      <span id="my-turn-indicator">{ turn === 3 ? 'Your turn!' : `${players[turn].username}'s turn`}</span>
+    }
     <div id="l-tiles">
       {
-        Array.from({ length: hiddenTileCount(0) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
+        Array.from({ length: hiddenTileCount(2) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
     </div>
+    <span id="l-username">{players[2].username}</span>
     <div id="t-tiles">
       {
         Array.from({ length: hiddenTileCount(1) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
     </div>
+    <span id="t-username">{players[1].username}</span>
     <div id="r-tiles">
       {
-        Array.from({ length: hiddenTileCount(2) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
+        Array.from({ length: hiddenTileCount(0) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
     </div>
+    <span id="r-username">{players[0].username}</span>
   </div>
 }

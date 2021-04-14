@@ -73,13 +73,29 @@ export default class Player {
   /**
    * Gets the index of the player whose current turn it is, from this player's perspective.
    */
-  getRelativeTurn(): number {
+  getPerspectiveTurn(): number {
     const thisIndex = this.room.players.indexOf(this);
     const roomTurn = this.room.turn;
+
+    console.log(roomTurn, thisIndex);
 
     for (let i = 0; i < 4; i++) {
       if ((thisIndex + i + 1) % 4 === roomTurn) return i;
     }
+  }
+
+  /**
+   * Gets the other players in perspective order (left is index 0, top is index 1, right is index 2)
+   */
+  getPerspectivePlayers(): any[] {
+    const thisIndex = this.room.players.indexOf(this);
+    return this.room.players.slice(thisIndex + 1)
+      .concat(this.room.players.slice(0, thisIndex))
+      .map(p => ({ 
+        username: p.username, 
+        handExposed: p.handExposed, 
+        discarded: p.discarded, 
+      }));
   }
 
   /**
@@ -106,15 +122,9 @@ export default class Player {
       handConcealed: this.handConcealed,
       handExposed: this.handExposed,
       discarded: this.discarded,
-      turn: this.getRelativeTurn(),
+      turn: this.getPerspectiveTurn(),
       pendingAction: this.room.pendingAction as any,
-      players: this.room.players
-        .filter(p => p !== this)
-        .map(p => ({ 
-          username: p.username, 
-          handExposed: p.handExposed, 
-          discarded: p.discarded, 
-        })),
+      players: this.getPerspectivePlayers(),
     };
 
     if (result.pendingAction) {
