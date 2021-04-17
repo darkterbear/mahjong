@@ -1,5 +1,5 @@
 import { Application } from 'express';
-import { Action } from './game/ActionIntent';
+import ActionIntent, { Action } from './game/ActionIntent';
 import { Server } from 'socket.io';
 import Player from './game/Player';
 import Room from './game/Room';
@@ -109,7 +109,17 @@ export default function routes(app: Application, io: Server): void {
       // Discard tile
       if (targetTiles.length !== 1) return res.status(400).end();
       player.discard(targetTiles[0]);
-      room.nextTurn();
+
+      room.nextTurn(); // Set turn to what turn would be if no interrupting actions taken
+      room.pendingAction = new ActionIntent(
+        player.username,
+        Action.NONE,
+        setTimeout(() => {
+          delete room.pendingAction;
+          room.emitUpdates();
+        }, 3000),
+        Date.now() + 3000);
+
       room.emitUpdates();
       break;
     case Action.CHOW:

@@ -13,6 +13,7 @@ export default class ActionIntent {
 }
 
 export enum Action {
+  NONE = 0,
   CHOW = 1,
   PONG = 2,
   MAHJONG = 3

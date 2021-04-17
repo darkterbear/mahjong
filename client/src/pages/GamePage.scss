@@ -14,6 +14,22 @@ $hover-filter: drop-shadow(0px 0px 16px $blue);
     filter: $update-filter;
   }
 
+  #pending-action {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    img {
+      width: 80px;
+      margin: 0 -8px;
+
+      cursor: pointer;
+
+      filter: $update-filter;
+    }
+  }
+
   #my-tiles {
     display: flex;
     flex-direction: row;

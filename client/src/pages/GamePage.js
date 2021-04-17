@@ -40,9 +40,15 @@ export function GamePage() {
     setHandConcealed(state.handConcealed)
     setHandExposed(state.handExposed)
     setDiscarded(state.discarded)
-    setTurn(state.turn)
-    setPendingAction(state.pendingAction)
     setPlayers(state.players)
+    setPendingAction(state.pendingAction)
+
+
+    if (state.pendingAction) {
+      setTurn(-1)
+    } else {
+      setTurn(state.turn)
+    }
   }
 
   const hiddenTileCount = (i) => {
@@ -61,7 +67,28 @@ export function GamePage() {
     playAction(0, [i])
   }
 
+  let status;
+  if (pendingAction) {
+    switch (pendingAction.action) {
+      case 0:
+        // DISCARD
+        let t;
+        const p = players.filter(p => p.username === pendingAction.username)[0];
+        if (p) t = p.discarded[p.discarded.length - 1]
+        else t = discarded[discarded.length - 1]
+
+        status = <div id="pending-action">
+          <p>{ pendingAction.username } discarded:</p>
+          <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+        </div>
+        break;
+      default:
+        break;
+    }
+  }
+
   return <div id="game-page">
+    {status}
     <div id="my-tiles">
       {
         handConcealed.map((t, i) => <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)

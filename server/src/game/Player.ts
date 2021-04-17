@@ -132,11 +132,11 @@ export default class Player {
       handExposed: this.handExposed,
       discarded: this.discarded,
       turn: this.getPerspectiveTurn(),
-      pendingAction: this.room.pendingAction as any,
       players: this.getPerspectivePlayers(),
-    };
+    } as any;
 
-    if (result.pendingAction) {
+    if (this.room.pendingAction) {
+      result.pendingAction = {...(this.room.pendingAction as any)};
       delete result.pendingAction.timeout;
     }
     
