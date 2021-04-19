@@ -9,6 +9,7 @@ export default class Room {
   deck: Tile[];
   turn: number;
   pendingAction?: ActionIntent;
+  winner: number;
 
   private static rooms: Map<string, Room> = new Map();
 
@@ -42,6 +43,7 @@ export default class Room {
     this.players = [];
     this.deck = [];
     this.turn = -1;
+    this.winner = -1;
 
     Room.rooms.set(this.code, this);
   }
@@ -78,6 +80,11 @@ export default class Room {
   nextTurn(): void {
     this.turn = (this.turn + 1) % 4;
     this.players[this.turn].handConcealed.push(this.deck.pop());
+
+    // Check if player won
+    if (this.players[this.turn].won()) {
+      // TODO:
+    }
   }
 
   /**

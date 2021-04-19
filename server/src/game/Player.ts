@@ -142,4 +142,12 @@ export default class Player {
     
     return result;
   }
+
+  /**
+   * Returns whether or not this player has a winning hand.
+   */
+  won(): boolean {
+    // TODO:
+    return Tile.winningHand(this.handConcealed.slice().sort(Tile.comparator), 1, 4 - this.handExposed.length);
+  }
 }
