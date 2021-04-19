@@ -7,7 +7,7 @@ export default class Player {
   username: string;
   room?: Room;
   handConcealed: Tile[];
-  handExposed: Tile[];
+  handExposed: Tile[][];
   discarded: Tile[];
   socket?: Socket;
 
