@@ -52,6 +52,22 @@ export function GamePage() {
     }
   }
 
+  // const getPendingActionPlayer = () => {
+  //   if (!pendingAction) return null;    
+  //   return players.filter(p => p.username === pendingAction.username)[0]
+  // }
+
+  // const getAvailableInterrupts = () => {
+  //   // If no pending action, cannot interrupt
+  //   if (!pendingAction) return []
+
+  //   // If we are the pending action, we can't do anything
+  //   const p = getPendingActionPlayer()
+  //   if (!p) return []
+    
+  //   let t = pendingAction.tile
+  // }
+
   const hiddenTileCount = (i) => {
     const p = players[i];
     if (!p.handExposed) return 0;
@@ -73,11 +89,7 @@ export function GamePage() {
     switch (pendingAction.action) {
       case 0:
         // DISCARD
-        let t;
-        const p = players.filter(p => p.username === pendingAction.username)[0];
-        if (p) t = p.discarded[p.discarded.length - 1]
-        else t = discarded[discarded.length - 1]
-
+        let t = pendingAction.tile
         status = <div id="pending-action">
           <p>{ pendingAction.username } discarded:</p>
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>

@@ -110,11 +110,13 @@ export default function routes(app: Application, io: Server): void {
     case 0:
       // Discard tile
       if (targetTiles.length !== 1) return res.status(400).end();
-      player.discard(targetTiles[0]);
+      const tile = player.discard(targetTiles[0]);
+      if (!tile) return res.status(400).end();
 
       room.pendingAction = new ActionIntent(
         player.username,
         Action.NONE,
+        tile,
         setTimeout(() => {
           room.nextTurn();
           delete room.pendingAction;

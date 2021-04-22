@@ -74,11 +74,13 @@ export default class Player {
    * Discards a tile from their handConcealed, updates the discard pile
    * @param index Index of tile in handConcealed to discard
    */
-  discard(index: number): void {
+  discard(index: number): Tile {
     if (!this.handConcealed[index]) return;
-    this.discarded.push(this.handConcealed.splice(index, 1)[0]);
+    const tile = this.handConcealed.splice(index, 1)[0];
+    this.discarded.push(tile);
     this.discarded = this.discarded.slice(Math.max(0, this.discarded.length - 5));
     this.handConcealed.sort(Tile.comparator);
+    return tile;
   }
 
   /**
