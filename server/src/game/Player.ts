@@ -94,6 +94,20 @@ export default class Player {
   }
 
   /**
+   * Gets the index of the winner, from this player's perspective.
+   */
+  getPerspectiveWinner(): number {
+    const thisIndex = this.room.players.indexOf(this);
+    const roomWinner = this.room.winner;
+
+    if (roomWinner < 0) return roomWinner;
+
+    for (let i = 0; i < 4; i++) {
+      if ((thisIndex + i + 1) % 4 === roomWinner) return i;
+    }
+  }
+
+  /**
    * Gets the other players in perspective order (left is index 0, top is index 1, right is index 2)
    */
   getPerspectivePlayers(): any[] {
@@ -132,6 +146,7 @@ export default class Player {
       handExposed: this.handExposed,
       discarded: this.discarded,
       turn: this.getPerspectiveTurn(),
+      winner: this.getPerspectiveWinner(),
       players: this.getPerspectivePlayers(),
     } as any;
 
@@ -147,7 +162,6 @@ export default class Player {
    * Returns whether or not this player has a winning hand.
    */
   won(): boolean {
-    // TODO:
     return Tile.winningHand(this.handConcealed.slice().sort(Tile.comparator), 1, 4 - this.handExposed.length);
   }
 }

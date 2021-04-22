@@ -110,11 +110,11 @@ export default function routes(app: Application, io: Server): void {
       if (targetTiles.length !== 1) return res.status(400).end();
       player.discard(targetTiles[0]);
 
-      room.nextTurn(); // Set turn to what turn would be if no interrupting actions taken
       room.pendingAction = new ActionIntent(
         player.username,
         Action.NONE,
         setTimeout(() => {
+          room.nextTurn();
           delete room.pendingAction;
           room.emitUpdates();
         }, 3000),

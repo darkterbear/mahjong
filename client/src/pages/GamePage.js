@@ -12,6 +12,7 @@ export function GamePage() {
 
   // Of players, whose turn is it? Indexes the players state; 3 represents self
   const [turn, setTurn] = useState(-1)
+  const [winner, setWinner] = useState(-1)
 
   const [pendingAction, setPendingAction] = useState(null)
   
@@ -42,7 +43,7 @@ export function GamePage() {
     setDiscarded(state.discarded)
     setPlayers(state.players)
     setPendingAction(state.pendingAction)
-
+    setWinner(state.winner)
 
     if (state.pendingAction) {
       setTurn(-1)
@@ -63,7 +64,7 @@ export function GamePage() {
    * @returns void
    */
   const handleTileClick = (i) => {
-    if (turn !== 3) return;
+    if (turn !== 3 || winner >= 0) return;
     playAction(0, [i])
   }
 
@@ -87,6 +88,13 @@ export function GamePage() {
     }
   }
 
+  if (winner >= 0) {
+    const winnerUsername = winner === 3 ? 'You' : players[winner].username
+    status = <div id="pending-action">
+      <h2>{ winnerUsername } won!</h2>
+    </div>
+  }
+
   return <div id="game-page">
     {status}
     <div id="my-tiles">
@@ -99,7 +107,7 @@ export function GamePage() {
         discarded.map(t => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
       }
     </div>
-    { turn >= 0 &&
+    { turn >= 0 && winner < 0 &&
       <span id="my-turn-indicator">{ turn === 3 ? 'Your turn!' : `${players[turn].username}'s turn`}</span>
     }
     <div id="l-tiles">
