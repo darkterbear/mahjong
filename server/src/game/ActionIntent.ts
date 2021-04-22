@@ -10,7 +10,6 @@ export default class ActionIntent {
   constructor(username: string, action: Action, tile: Tile, timeout: NodeJS.Timeout, executionTime: number) {
     this.username = username;
     this.action = action;
-    console.log(tile);
     this.tile = tile;
     this.timeout = timeout;
     this.executionTime = executionTime;

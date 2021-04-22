@@ -25,7 +25,7 @@ export function LobbyPage() {
     })
 
     socket.on('start_game', () => {
-      history.replace('/game')
+      history.replace('/game', { username })
     })
 
     socket.on('disconnect', () => {
@@ -33,16 +33,12 @@ export function LobbyPage() {
     })
   }, [])
 
-  const handleStartGame = () => {
-    startGame()
-  }
-
   return <div id="lobby-page">
     <h1>Lobby</h1>
     <span id="code">Room code: {code}</span>
     { players.map(p => <p className={p === leader ? 'leader' : ''} key={p}>{p}</p>) }
     { leader === username && 
-      <button onClick={handleStartGame}>Start Game</button>
+      <button onClick={startGame}>Start Game</button>
     }
   </div>
 }

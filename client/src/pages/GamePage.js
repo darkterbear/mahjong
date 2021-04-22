@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useHistory } from 'react-router'
+import { useHistory, useLocation } from 'react-router'
 import { getGameState, playAction, socket } from '../api'
 import './GamePage.scss'
 
 export function GamePage() {
   const history = useHistory()
+  const { username } = useLocation().state
 
   const [handConcealed, setHandConcealed] = useState([])
   const [handExposed, setHandExposed] = useState([])
@@ -52,21 +53,15 @@ export function GamePage() {
     }
   }
 
-  // const getPendingActionPlayer = () => {
-  //   if (!pendingAction) return null;    
-  //   return players.filter(p => p.username === pendingAction.username)[0]
-  // }
+  const getAvailableInterrupts = () => {
+    // If no pending action, cannot interrupt
+    if (!pendingAction) return []
 
-  // const getAvailableInterrupts = () => {
-  //   // If no pending action, cannot interrupt
-  //   if (!pendingAction) return []
-
-  //   // If we are the pending action, we can't do anything
-  //   const p = getPendingActionPlayer()
-  //   if (!p) return []
+    // If we are the pending action, we can't do anything
+    if (!pendingAction.username === username) return []
     
-  //   let t = pendingAction.tile
-  // }
+    let t = pendingAction.tile
+  }
 
   const hiddenTileCount = (i) => {
     const p = players[i];
