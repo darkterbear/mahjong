@@ -100,7 +100,7 @@ export default class Player {
     const thisIndex = this.room.players.indexOf(this);
     const roomWinner = this.room.winner;
 
-    if (roomWinner < 0) return roomWinner;
+    if (roomWinner < 0 || roomWinner > 3) return roomWinner;
 
     for (let i = 0; i < 4; i++) {
       if ((thisIndex + i + 1) % 4 === roomWinner) return i;
@@ -138,7 +138,7 @@ export default class Player {
    */
   getPerspectiveGameState(): any {
     if (!this.room || !this.room.inGame()) {
-      throw new Error('Cannot get game state; player not in room, or room not in game');
+      return null;
     }
 
     const result = {

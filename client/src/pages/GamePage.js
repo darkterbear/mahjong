@@ -89,10 +89,16 @@ export function GamePage() {
   }
 
   if (winner >= 0) {
-    const winnerUsername = winner === 3 ? 'You' : players[winner].username
-    status = <div id="pending-action">
-      <h2>{ winnerUsername } won!</h2>
+    if (winner === 4) {
+      status = <div id="pending-action">
+      <h2>Draw: out of tiles</h2>
     </div>
+    } else {
+      const winnerUsername = winner === 3 ? 'You' : players[winner].username
+      status = <div id="pending-action">
+        <h2>{ winnerUsername } won!</h2>
+      </div>
+    }
   }
 
   return <div id="game-page">

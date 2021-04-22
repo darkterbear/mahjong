@@ -52,7 +52,6 @@ export default class Room {
    * Returns whether or not the room has a game in progress (deck has tiles)
    */
   inGame(): boolean {
-    if (this.winner >= 0) return false;
     return this.deck.length > 0 || this.players.some(p => p.handConcealed.length + p.handExposed.length > 0);
   }
 
@@ -80,6 +79,12 @@ export default class Room {
    */
   nextTurn(): void {
     this.turn = (this.turn + 1) % 4;
+
+    if (this.deck.length === 0) {
+      this.winner = 4;
+      return;
+    }
+
     this.players[this.turn].handConcealed.push(this.deck.pop());
 
     // Check if player won

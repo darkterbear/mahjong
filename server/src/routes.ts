@@ -5,6 +5,8 @@ import Player from './game/Player';
 import Room from './game/Room';
 import Tile from './game/Tile';
 
+const WAIT_TIME = 1000;
+
 export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
     const { username } = req.body;
@@ -87,7 +89,7 @@ export default function routes(app: Application, io: Server): void {
     const player = Player.getPlayer(id);
     const room = player?.room;
 
-    if (!room || !room.inGame()) {
+    if (!room || !room.inGame() || room.winner >= 0) {
       return res.status(400).end();
     }
 
@@ -117,8 +119,8 @@ export default function routes(app: Application, io: Server): void {
           room.nextTurn();
           delete room.pendingAction;
           room.emitUpdates();
-        }, 3000),
-        Date.now() + 3000);
+        }, WAIT_TIME),
+        Date.now() + WAIT_TIME);
 
       room.emitUpdates();
       break;
