@@ -146,7 +146,7 @@ export default class Player {
       handExposed: this.handExposed,
       discarded: this.discarded,
       turn: this.getPerspectiveTurn(),
-      winner: this.getPerspectiveWinner(),
+      winner: this.getPerspectiveWinner(), // TODO: if there is winner, display their hand
       players: this.getPerspectivePlayers(),
     } as any;
 
