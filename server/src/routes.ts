@@ -12,12 +12,16 @@ export default function routes(app: Application, io: Server): void {
     const { username } = req.body;
     const id = req.sessionID;
 
-    // TODO: destroy player if doesnt connect to sockets within time
     const player = new Player(id, username);
     const room = new Room();
     player.joinRoom(room);
 
     res.json({ code: room.code });
+
+    // If player doesn't connect to socket within 10 seconds, destroy the player
+    setTimeout(() => {
+      if (!player.socket) player.destroy();
+    }, 10000);
   });
 
   app.post('/join_room', (req, res) => {
@@ -37,13 +41,17 @@ export default function routes(app: Application, io: Server): void {
       return res.status(400).end();
     }
 
-    // TODO: destroy player if doesnt connect to sockets within time
     const player = new Player(id, username);
     player.joinRoom(room);
 
     io.to(room.code).emit('update_players', room.playerNames(), room.leader?.username);
 
     res.json({ players: room.playerNames(), leader: room.leader?.username });
+
+    // If player doesn't connect to socket within 10 seconds, destroy the player
+    setTimeout(() => {
+      if (!player.socket) player.destroy();
+    }, 10000);
   });
 
   app.post('/start_game', (req, res) => {
