@@ -110,7 +110,7 @@ export default class Player {
   }
 
   /**
-   * Gets the other players in perspective order (left is index 0, top is index 1, right is index 2)
+   * Gets the other players in perspective order (left is index 2, top is index 1, right is index 0)
    */
   getPerspectivePlayers(): any[] {
     const thisIndex = this.room.players.indexOf(this);
