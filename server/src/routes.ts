@@ -5,7 +5,7 @@ import Player from './game/Player';
 import Room from './game/Room';
 import Tile from './game/Tile';
 
-const WAIT_TIME = 10000;
+const WAIT_TIME = 5000;
 
 export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
