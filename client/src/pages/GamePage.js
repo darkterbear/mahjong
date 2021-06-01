@@ -16,6 +16,8 @@ export function GamePage() {
   const [winner, setWinner] = useState(-1)
 
   const [pendingAction, setPendingAction] = useState(null)
+  const [interrupts, setInterrupts] = useState([])
+  const [hover, setHover] = useState(null)
   
   // List of the 3 other players, in left, top, right order
   const [players, setPlayers] = useState(Array.from({ length: 3}, () => ({ username: '', handExposed: [], discarded: [] })))
@@ -39,7 +41,7 @@ export function GamePage() {
   }, [])
 
   useEffect(async () => {
-    console.log(getAvailableInterrupts())
+    setInterrupts(getAvailableInterrupts())
   }, [pendingAction])
 
   const updateGameState = (state) => {
@@ -146,6 +148,10 @@ export function GamePage() {
     playAction(0, [i])
   }
 
+  const getAssociatedInterrupt = (i) => {
+    return interrupts.find(interrupt => interrupt.includes(i))
+  }
+
   let status;
   if (pendingAction) {
     switch (pendingAction.action) {
@@ -179,7 +185,13 @@ export function GamePage() {
     {status}
     <div id="my-tiles">
       {
-        handConcealed.map((t, i) => <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+        handConcealed.map((t, i) => {
+          const interrupt = getAssociatedInterrupt(i)
+          if (interrupt) {
+            return <img className={`interrupt ${hover !== null && getAssociatedInterrupt(hover).includes(i) ? 'hover' : ''}`} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+          }
+          return <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+        })
       }
     </div>
     <div id="my-discards">
