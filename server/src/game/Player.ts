@@ -84,7 +84,8 @@ export default class Player {
    * @param indices Indices of tiles in handConceal to meld with
    */
   takeMeld(tile: Tile, indices: number[]): void {
-    const handTiles = indices.map(i => this.handConcealed.splice(i, 1)[0]);
+    // Remove index positions in reverse order to account for shifting
+    const handTiles = indices.sort().reverse().map(i => this.handConcealed.splice(i, 1)[0]);
     this.handExposed.push([tile, ...handTiles].sort(Tile.comparator));
   }
 

@@ -188,6 +188,7 @@ export function GamePage() {
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
         </div>
         break;
+      // TODO: Handle cases for other pendingActions
       default:
         break;
     }
