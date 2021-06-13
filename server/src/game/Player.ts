@@ -71,16 +71,21 @@ export default class Player {
   }
 
   /**
-   * Discards a tile from their handConcealed, updates the discard pile
-   * @param index Index of tile in handConcealed to discard
+   * Adds tile to the player's discard pile
    */
-  discard(index: number): Tile {
-    if (!this.handConcealed[index]) return;
-    const tile = this.handConcealed.splice(index, 1)[0];
+  discard(tile: Tile): void {
     this.discarded.push(tile);
     this.discarded = this.discarded.slice(Math.max(0, this.discarded.length - 5));
-    this.handConcealed.sort(Tile.comparator);
-    return tile;
+  }
+
+  /**
+   * Forms a meld from an interrupt with the given tiles and adds to handExposed
+   * @param tile Tile to chow/pong/kong
+   * @param indices Indices of tiles in handConceal to meld with
+   */
+  takeMeld(tile: Tile, indices: number[]): void {
+    const handTiles = indices.map(i => this.handConcealed.splice(i, 1)[0]);
+    this.handExposed.push([tile, ...handTiles].sort(Tile.comparator));
   }
 
   /**

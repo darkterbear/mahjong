@@ -101,11 +101,6 @@ export default function routes(app: Application, io: Server): void {
       return res.status(400).end();
     }
 
-    // Check it is player's turn
-    if (room.turn >= 0 && room.players[room.turn] !== player) {
-      return res.status(400).end();
-    }
-
     /**
      * {
      *    type: number, // 0, 1, 2, 3; 0 for discard, others as Action enum
@@ -117,8 +112,14 @@ export default function routes(app: Application, io: Server): void {
     switch(type) {
     case 0:
       // Discard tile
+      // Check it is player's turn
+      if (room.turn >= 0 && room.players[room.turn] !== player) {
+        return res.status(400).end();
+      }
       if (targetTiles.length !== 1) return res.status(400).end();
-      const tile = player.discard(targetTiles[0]);
+
+      const tile = player.handConcealed.splice(targetTiles[0], 1)[0];
+      player.handConcealed.sort(Tile.comparator);
       if (!tile) return res.status(400).end();
 
       room.pendingAction = new ActionIntent(
@@ -126,6 +127,7 @@ export default function routes(app: Application, io: Server): void {
         Action.NONE,
         tile,
         setTimeout(() => {
+          player.discard(tile);
           room.nextTurn();
           delete room.pendingAction;
           room.emitUpdates();
@@ -135,10 +137,41 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.CHOW:
-      // TODO
+      if (targetTiles.length !== 2) return res.status(400).end();
+      // TODO: make sure given tiles actually forms a chow
+      // Cancel previous pendingAction
+      clearTimeout(room.pendingAction.timeout);
+      room.pendingAction = new ActionIntent(
+        player.username,
+        Action.CHOW,
+        room.pendingAction.tile,
+        setTimeout(() => {
+          player.takeMeld(room.pendingAction.tile, targetTiles);
+          delete room.pendingAction;
+          room.emitUpdates();
+        }),
+        Date.now() + WAIT_TIME,
+      );
+
+      room.emitUpdates();
       break;
     case Action.PONG:
-      // TODO
+      if (targetTiles.length !== 2 && targetTiles.length !== 3) return res.status(400).end();
+      // TODO: make sure given tiles actually forms a pong/kong
+      // Cancel previous pendingAction
+      clearTimeout(room.pendingAction.timeout);
+      room.pendingAction = new ActionIntent(
+        player.username,
+        Action.PONG,
+        room.pendingAction.tile,
+        setTimeout(() => {
+          player.takeMeld(room.pendingAction.tile, targetTiles);
+          delete room.pendingAction;
+          room.emitUpdates();
+        }),
+        Date.now() + WAIT_TIME,
+      );
+      room.emitUpdates();
       break;
     case Action.MAHJONG:
       // TODO

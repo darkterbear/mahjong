@@ -59,6 +59,7 @@ export function GamePage() {
     }
   }
 
+  // TODO: handle mahjong interrupt (wins the game)
   const getAvailableInterrupts = () => {
     // If no pending action, cannot interrupt
     if (!pendingAction) return []
@@ -144,8 +145,31 @@ export function GamePage() {
    * @returns void
    */
   const handleTileClick = (i) => {
-    if (turn !== 3 || winner >= 0) return;
-    playAction(0, [i])
+    if (winner >= 0) return;
+
+    // Tile click only valid in 2 scenarios...
+    if (turn === 3 && !pendingAction) {
+      // 1. It is our turn, and we are discarding
+      playAction(0, [i])
+      return
+    } else if (turn !== 3 && pendingAction) {
+      // 2. There is a pending discard that isn't ours
+      const interrupt = getAssociatedInterrupt(i)
+      if (!interrupt) return
+
+      // Is this a chow or pong/kong?
+      const t1 = handConcealed[interrupt[0]]
+      const t2 = handConcealed[interrupt[1]]
+      if (t1.value === t2.value) {
+        console.log('play pong/kong')
+        // Pong or kong
+        playAction(2, interrupt)
+      } else {
+        console.log('play chow')
+        // Chow
+        playAction(1, interrupt)
+      }
+    }
   }
 
   const getAssociatedInterrupt = (i) => {
@@ -154,6 +178,7 @@ export function GamePage() {
 
   let status;
   if (pendingAction) {
+    console.log(pendingAction)
     switch (pendingAction.action) {
       case 0:
         // DISCARD
@@ -181,6 +206,7 @@ export function GamePage() {
     }
   }
 
+  console.log(handExposed)
   return <div id="game-page">
     {status}
     <div id="my-tiles">
@@ -191,6 +217,15 @@ export function GamePage() {
             return <img className={`interrupt ${hover !== null && getAssociatedInterrupt(hover).includes(i) ? 'hover' : ''}`} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
           }
           return <img onClick={() => handleTileClick(i)} src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+        })
+      }
+      {
+        handExposed.map((meld, i) => {
+          return <div className="exposed">
+            {
+              meld.map((t, j) => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+            }
+          </div>
         })
       }
     </div>
@@ -206,6 +241,15 @@ export function GamePage() {
       {
         Array.from({ length: hiddenTileCount(2) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
+      {
+        players[2].handExposed.map((meld, i) => {
+          return <div className="exposed">
+            {
+              meld.map((t, j) => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+            }
+          </div>
+        })
+      }
     </div>
     <div id="l-discards">
       {
@@ -217,6 +261,15 @@ export function GamePage() {
       {
         Array.from({ length: hiddenTileCount(1) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
       }
+      {
+        players[1].handExposed.map((meld, i) => {
+          return <div className="exposed">
+            {
+              meld.map((t, j) => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+            }
+          </div>
+        })
+      }
     </div>
     <div id="t-discards">
       {
@@ -227,6 +280,15 @@ export function GamePage() {
     <div id="r-tiles">
       {
         Array.from({ length: hiddenTileCount(0) }, () => <img src={'https://files.terranceli.com/mahjong/MJhide.svg'} />)
+      }
+      {
+        players[0].handExposed.map((meld, i) => {
+          return <div className="exposed">
+            {
+              meld.map((t, j) => <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>)
+            }
+          </div>
+        })
       }
     </div>
     <div id="r-discards">
