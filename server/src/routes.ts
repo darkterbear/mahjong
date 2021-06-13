@@ -153,6 +153,7 @@ export default function routes(app: Application, io: Server): void {
         Date.now() + WAIT_TIME,
       );
 
+      room.turn = room.players.indexOf(player);
       room.emitUpdates();
       break;
     case Action.PONG:
@@ -171,6 +172,8 @@ export default function routes(app: Application, io: Server): void {
         }, WAIT_TIME),
         Date.now() + WAIT_TIME,
       );
+
+      room.turn = room.players.indexOf(player);
       room.emitUpdates();
       break;
     case Action.MAHJONG:
