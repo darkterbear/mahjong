@@ -149,7 +149,7 @@ export default function routes(app: Application, io: Server): void {
           player.takeMeld(room.pendingAction.tile, targetTiles);
           delete room.pendingAction;
           room.emitUpdates();
-        }),
+        }, WAIT_TIME),
         Date.now() + WAIT_TIME,
       );
 
@@ -168,7 +168,7 @@ export default function routes(app: Application, io: Server): void {
           player.takeMeld(room.pendingAction.tile, targetTiles);
           delete room.pendingAction;
           room.emitUpdates();
-        }),
+        }, WAIT_TIME),
         Date.now() + WAIT_TIME,
       );
       room.emitUpdates();

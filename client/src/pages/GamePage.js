@@ -179,16 +179,29 @@ export function GamePage() {
   let status;
   if (pendingAction) {
     console.log(pendingAction)
+    let t = pendingAction.tile
     switch (pendingAction.action) {
       case 0:
         // DISCARD
-        let t = pendingAction.tile
         status = <div id="pending-action">
           <p>{ pendingAction.username } discarded:</p>
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
         </div>
         break;
-      // TODO: Handle cases for other pendingActions
+      case 1:
+        // CHOW
+        status = <div id="pending-action">
+          <p>{ pendingAction.username } to CHOW:</p>
+          <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+        </div>
+        break;
+      case 2:
+        // PONG
+        status = <div id="pending-action">
+          <p>{ pendingAction.username } to PONG/KONG:</p>
+          <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+        </div>
+        break;
       default:
         break;
     }
