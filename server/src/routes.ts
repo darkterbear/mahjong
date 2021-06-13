@@ -177,7 +177,14 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.MAHJONG:
-      // TODO
+      // TODO: make sure player can actually mahjong
+      clearTimeout(room.pendingAction.timeout);
+      player.win(room.pendingAction.tile);
+      room.turn = room.players.indexOf(player);
+      room.winner = room.turn;
+      delete room.pendingAction;
+      room.emitUpdates();
+
       break;
     default:
       res.status(400).end();

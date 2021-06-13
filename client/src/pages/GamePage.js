@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
 import { getGameState, playAction, socket } from '../api'
+import { winningHand } from '../utils'
 import './GamePage.scss'
 
 export function GamePage() {
@@ -59,7 +60,18 @@ export function GamePage() {
     }
   }
 
-  // TODO: handle mahjong interrupt (wins the game)
+  const canMahjongInterrupt = () => {
+    // If no pending action, cannot interrupt
+    if (!pendingAction) return false
+
+    // If we are the pending action, we can't do anything
+    if (pendingAction.username === username) return false
+
+    let t = pendingAction.tile
+
+    return winningHand([...handConcealed, t], 1, 4 - handExposed.length)
+  }
+
   const getAvailableInterrupts = () => {
     // If no pending action, cannot interrupt
     if (!pendingAction) return []
@@ -157,6 +169,8 @@ export function GamePage() {
       const interrupt = getAssociatedInterrupt(i)
       if (!interrupt) return
 
+      setHover(null)
+
       // Is this a chow or pong/kong?
       const t1 = handConcealed[interrupt[0]]
       const t2 = handConcealed[interrupt[1]]
@@ -170,6 +184,10 @@ export function GamePage() {
         playAction(1, interrupt)
       }
     }
+  }
+
+  const handleMahjongClick = () => {
+    playAction(3)
   }
 
   const getAssociatedInterrupt = (i) => {
@@ -186,6 +204,7 @@ export function GamePage() {
         status = <div id="pending-action">
           <p>{ pendingAction.username } discarded:</p>
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+          { canMahjongInterrupt() && <button onClick={handleMahjongClick}>Mahjong!</button>}
         </div>
         break;
       case 1:
@@ -193,6 +212,7 @@ export function GamePage() {
         status = <div id="pending-action">
           <p>{ pendingAction.username } to CHOW:</p>
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+          { canMahjongInterrupt() && <button onClick={handleMahjongClick}>Mahjong!</button>}
         </div>
         break;
       case 2:
@@ -200,6 +220,7 @@ export function GamePage() {
         status = <div id="pending-action">
           <p>{ pendingAction.username } to PONG/KONG:</p>
           <img src={`https://files.terranceli.com/mahjong/MJ${t.suit}${t.value}-.svg`}/>
+          { canMahjongInterrupt() && <button onClick={handleMahjongClick}>Mahjong!</button>}
         </div>
         break;
       default:
@@ -220,7 +241,6 @@ export function GamePage() {
     }
   }
 
-  console.log(handExposed)
   return <div id="game-page">
     {status}
     <div id="my-tiles">

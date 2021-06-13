@@ -172,4 +172,14 @@ export default class Player {
   won(): boolean {
     return Tile.winningHand(this.handConcealed.slice().sort(Tile.comparator), 1, 4 - this.handExposed.length);
   }
+
+  /**
+   * Makes all tiles of this player visible
+   * @param t Tile that this player wins with
+   */
+  win(t: Tile): void {
+    this.handExposed = [[...this.handExposed.flat(), ...this.handConcealed, t]];
+    this.handConcealed = [];
+    this.handExposed[0].sort(Tile.comparator);
+  }
 }
