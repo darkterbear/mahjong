@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client'
 
-export const BASE_URL = 'http://localhost:3000'
+export const BASE_URL = process.env.REACT_APP_API_URL
 
 export let socket = null;
 export const connectSocket = () => socket = io(BASE_URL, { withCredentials: true })

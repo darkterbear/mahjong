@@ -2,8 +2,8 @@
 	"name": "mahjong-client",
 	"version": "1.0.0",
 	"scripts": {
-		"start": "PORT=5000 react-scripts start",
-		"build": "react-scripts build",
+		"start": "PORT=5000 REACT_APP_API_URL=http://localhost:3000 react-scripts start",
+		"build": "REACT_APP_API_URL=https://mahjong-api.terranceli.com react-scripts build",
 		"test": "react-scripts test --env=jsdom",
 		"eject": "react-scripts eject",
 		"sass": "sass ./public/input.scss ./public/styles.css --watch"
