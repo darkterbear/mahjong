@@ -178,7 +178,7 @@ export default class Player {
    * @param t Tile that this player wins with
    */
   win(t: Tile): void {
-    this.handExposed = [[...this.handExposed.flat(), ...this.handConcealed, t]];
+    this.handExposed = [[...this.handExposed.reduce((m, a) => a.concat(m), []), ...this.handConcealed, t]];
     this.handConcealed = [];
     this.handExposed[0].sort(Tile.comparator);
   }
