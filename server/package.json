@@ -2,7 +2,7 @@
   "name": "mahjong-server",
   "version": "1.0.0",
   "scripts": {
-    "start": "tsc && node build/app.js",
+    "start": "tsc && PORT=3000 node build/app.js",
     "build": "tsc",
     "test": "jest"
   },

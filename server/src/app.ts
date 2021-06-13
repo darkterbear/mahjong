@@ -5,7 +5,7 @@ import http from 'http';
 import routes from './routes';
 import sockets from './sockets';
 
-const PORT = 3000;
+const PORT = process.env.PORT;
 
 const app = express();
 const sessionMiddleware = session({
@@ -15,8 +15,8 @@ const sessionMiddleware = session({
   // genid: () => uuidv4(),
 });
 
+app.use(cors({ origin: ['https://mahjong.terranceli.com', 'http://localhost:5000'], credentials: true }));
 app.use(express.json());
-app.use(cors({ origin: ['http://localhost:5000', 'https://mahjong.terranceli.com'], credentials: true }));
 app.use(sessionMiddleware);
 
 const httpServer = http.createServer(app);
