@@ -16,8 +16,8 @@ const sessionMiddleware = session({
 });
 
 app.use(express.json());
-app.use(sessionMiddleware);
 app.use(cors({ origin: ['http://localhost:5000', 'https://mahjong.terranceli.com'], credentials: true }));
+app.use(sessionMiddleware);
 
 const httpServer = http.createServer(app);
 
