@@ -10,7 +10,7 @@ export default function sockets(
   sessionMiddleware: RequestHandler): Server {
     
   const io = new Server(httpServer, { cors: {
-    origin: 'http://localhost:5000',
+    origin: ['https://mahjong.terranceli.com', 'http://localhost:5000'],
     methods: ['GET', 'POST'],
     credentials: true,
   }});
