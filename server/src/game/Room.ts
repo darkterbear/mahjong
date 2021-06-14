@@ -1,5 +1,5 @@
 import Player from './Player';
-import Tile from './Tile';
+import { Tile } from 'mahjong';
 import { randomCode } from '../utils';
 import ActionIntent from './ActionIntent';
 export default class Room {

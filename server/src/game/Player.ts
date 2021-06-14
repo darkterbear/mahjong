@@ -1,4 +1,4 @@
-import Tile from './Tile';
+import { Tile } from 'mahjong';
 import { Socket } from 'socket.io';
 import Room from './Room';
 

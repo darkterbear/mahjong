@@ -3,7 +3,7 @@ import ActionIntent, { Action } from './game/ActionIntent';
 import { Server } from 'socket.io';
 import Player from './game/Player';
 import Room from './game/Room';
-import Tile from './game/Tile';
+import { Tile } from 'mahjong';
 
 const WAIT_TIME = 5000;
 

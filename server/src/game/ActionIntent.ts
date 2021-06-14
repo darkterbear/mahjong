@@ -1,4 +1,4 @@
-import Tile from './Tile';
+import { Tile } from 'mahjong';
 
 export default class ActionIntent {
   username: string;
