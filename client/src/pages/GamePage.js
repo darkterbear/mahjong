@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
 import { getGameState, playAction, socket } from '../api'
 import { Tile } from 'mahjong'
+import { CountdownCircleTimer } from "react-countdown-circle-timer";
 import './GamePage.scss'
 
 export function GamePage() {
@@ -242,6 +243,17 @@ export function GamePage() {
   }
 
   return <div id="game-page">
+    { pendingAction && 
+      <div id="timer">
+        <CountdownCircleTimer
+          isPlaying
+          key={pendingAction.username}
+          duration={3}
+          colors={[["#527aff", 1]]}
+        >
+        </CountdownCircleTimer>
+      </div>
+    }
     {status}
     <div id="my-tiles">
       {
