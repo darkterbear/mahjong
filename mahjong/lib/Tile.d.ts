@@ -18,5 +18,8 @@ export default class Tile {
      * @returns Whether or not the hand satisfiest he requirements
      */
     static winningHand(hand: Tile[], pairsNeeded: number, setsNeeded: number): boolean;
+    static isSameSuit(tiles: Tile[]): boolean;
+    static isChow(t1: Tile, t2: Tile, t3: Tile): boolean;
+    static isPong(tiles: Tile[]): boolean;
     static shuffledDeck(): Tile[];
 }

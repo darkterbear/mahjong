@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
 import { getGameState, playAction, socket } from '../api'
-import { winningHand } from '../utils'
+import { Tile } from 'mahjong'
 import './GamePage.scss'
 
 export function GamePage() {
@@ -21,7 +21,7 @@ export function GamePage() {
   const [hover, setHover] = useState(null)
   
   // List of the 3 other players, in left, top, right order
-  const [players, setPlayers] = useState(Array.from({ length: 3}, () => ({ username: '', handExposed: [], discarded: [] })))
+  const [players, setPlayers] = useState(Array.from({ length: 3 }, () => ({ username: '', handExposed: [], discarded: [] })))
 
   useEffect(async () => {
     // Fetch game state
@@ -69,7 +69,7 @@ export function GamePage() {
 
     let t = pendingAction.tile
 
-    return winningHand([...handConcealed, t], 1, 4 - handExposed.length)
+    return Tile.winningHand([...handConcealed, t], 1, 4 - handExposed.length)
   }
 
   const getAvailableInterrupts = () => {

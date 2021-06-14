@@ -59,6 +59,22 @@ class Tile {
         }
         return false;
     }
+    static isSameSuit(tiles) {
+        return tiles.every(t => t.suit === tiles[0].suit);
+    }
+    static isChow(t1, t2, t3) {
+        if (!Tile.isSameSuit([t1, t2, t3]))
+            return false;
+        const values = [t1, t2, t3].map(tile => tile.value).sort();
+        return t1.suit !== Suit.DRAGON && t1.suit !== Suit.WIND && values[1] - values[0] === 1 && values[2] - values[1] === 1;
+    }
+    static isPong(tiles) {
+        if (tiles.length < 3 || tiles.length > 4)
+            return false;
+        if (!Tile.isSameSuit(tiles))
+            return false;
+        return tiles.every(t => t.value === tiles[0].value);
+    }
     static shuffledDeck() {
         const deck = masterDeck.slice();
         // Shuffle

@@ -138,7 +138,12 @@ export default function routes(app: Application, io: Server): void {
       break;
     case Action.CHOW:
       if (targetTiles.length !== 2) return res.status(400).end();
-      // TODO: make sure given tiles actually forms a chow
+
+      // Make sure given tiles actually forms a chow
+      if (!Tile.isChow(room.pendingAction.tile, 
+        player.handConcealed[targetTiles[0]], 
+        player.handConcealed[targetTiles[1]])) return res.status(400).end();
+
       // Cancel previous pendingAction
       clearTimeout(room.pendingAction.timeout);
       room.pendingAction = new ActionIntent(
@@ -158,7 +163,9 @@ export default function routes(app: Application, io: Server): void {
       break;
     case Action.PONG:
       if (targetTiles.length !== 2 && targetTiles.length !== 3) return res.status(400).end();
-      // TODO: make sure given tiles actually forms a pong/kong
+      // Make sure given tiles actually forms a pong/kong
+      if (!Tile.isPong([room.pendingAction.tile, ...targetTiles.map((i: number) => player.handConcealed[i])])) return res.status(400).end();
+
       // Cancel previous pendingAction
       clearTimeout(room.pendingAction.timeout);
       room.pendingAction = new ActionIntent(
@@ -177,7 +184,10 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.MAHJONG:
-      // TODO: make sure player can actually mahjong
+      // Make sure player can actually mahjong
+      if (!Tile.winningHand([...player.handConcealed, room.pendingAction.tile], 1, 4 - player.handExposed.length))
+        return res.status(400).end();
+
       clearTimeout(room.pendingAction.timeout);
       player.win(room.pendingAction.tile);
       room.turn = room.players.indexOf(player);

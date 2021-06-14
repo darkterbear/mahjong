@@ -9,6 +9,7 @@
 		"sass": "sass ./public/input.scss ./public/styles.css --watch"
 	},
 	"dependencies": {
+    "mahjong": "file:../mahjong",
 		"react": "^17.0.2",
 		"react-dom": "^17.0.2",
 		"react-notifications": "^1.7.2",
