@@ -5,7 +5,7 @@ import Player from './game/Player';
 import Room from './game/Room';
 import { Tile } from 'mahjong';
 
-const WAIT_TIME = 5000;
+const WAIT_TIME = 3000;
 
 export default function routes(app: Application, io: Server): void {
   app.post('/create_room', (req, res) => {
@@ -118,9 +118,11 @@ export default function routes(app: Application, io: Server): void {
       }
       if (targetTiles.length !== 1) return res.status(400).end();
 
-      const tile = player.handConcealed.splice(targetTiles[0], 1)[0];
+      const i = targetTiles[0];
+      if (i < 0 || i >= player.handConcealed.length) return res.status(400).end();
+
+      const tile = player.handConcealed.splice(i, 1)[0];
       player.handConcealed.sort(Tile.comparator);
-      if (!tile) return res.status(400).end();
 
       room.pendingAction = new ActionIntent(
         player.username,
@@ -138,6 +140,8 @@ export default function routes(app: Application, io: Server): void {
       break;
     case Action.CHOW:
       if (targetTiles.length !== 2) return res.status(400).end();
+
+      if (!targetTiles.every((i: number) => i >= 0 && i < player.handConcealed.length)) return res.status(400).end();
 
       // Make sure given tiles actually forms a chow
       if (!Tile.isChow(room.pendingAction.tile, 
@@ -163,6 +167,9 @@ export default function routes(app: Application, io: Server): void {
       break;
     case Action.PONG:
       if (targetTiles.length !== 2 && targetTiles.length !== 3) return res.status(400).end();
+
+      if (!targetTiles.every((i: number) => i >= 0 && i < player.handConcealed.length)) return res.status(400).end();
+
       // Make sure given tiles actually forms a pong/kong
       if (!Tile.isPong([room.pendingAction.tile, ...targetTiles.map((i: number) => player.handConcealed[i])])) return res.status(400).end();
 
