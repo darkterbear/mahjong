@@ -147,6 +147,9 @@ export function GamePage() {
   }
 
   const hiddenTileCount = (i) => {
+    // Winner has 0 hidden tiles
+    if (i === winner) return 0;
+
     const p = players[i];
     if (!p.handExposed) return 0;
     return 13 - p.handExposed.length * 3 + (1 ? turn === i : 0);

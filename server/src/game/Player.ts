@@ -85,7 +85,7 @@ export default class Player {
    */
   takeMeld(tile: Tile, indices: number[]): void {
     // Remove index positions in reverse order to account for shifting
-    const handTiles = indices.sort().reverse().map(i => this.handConcealed.splice(i, 1)[0]);
+    const handTiles = indices.sort((a, b) => a - b).reverse().map(i => this.handConcealed.splice(i, 1)[0]);
     this.handExposed.push([tile, ...handTiles].sort(Tile.comparator));
   }
 
