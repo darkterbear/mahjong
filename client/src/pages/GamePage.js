@@ -245,6 +245,14 @@ export function GamePage() {
     }
   }
 
+  // LOG STATE FOR DEBUGGING
+  console.log('Hand', handConcealed, handExposed)
+  console.log('Hover', hover)
+  console.log('Players', players)
+  console.log('Turn', turn)
+  console.log('Pending Action', pendingAction)
+  console.log('Interrupts', interrupts)
+
   return <div id="game-page">
     { pendingAction && 
       <div id="timer">
