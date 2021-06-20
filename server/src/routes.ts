@@ -139,6 +139,8 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.CHOW:
+      if (!room.pendingAction) return res.status(400).end();
+
       if (targetTiles.length !== 2) return res.status(400).end();
 
       if (!targetTiles.every((i: number) => i >= 0 && i < player.handConcealed.length)) return res.status(400).end();
@@ -166,6 +168,8 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.PONG:
+      if (!room.pendingAction) return res.status(400).end();
+
       if (targetTiles.length !== 2 && targetTiles.length !== 3) return res.status(400).end();
 
       if (!targetTiles.every((i: number) => i >= 0 && i < player.handConcealed.length)) return res.status(400).end();
@@ -191,6 +195,8 @@ export default function routes(app: Application, io: Server): void {
       room.emitUpdates();
       break;
     case Action.MAHJONG:
+      if (!room.pendingAction) return res.status(400).end();
+      
       // Make sure player can actually mahjong
       if (!Tile.winningHand([...player.handConcealed, room.pendingAction.tile], 1, 4 - player.handExposed.length))
         return res.status(400).end();
