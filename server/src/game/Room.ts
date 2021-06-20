@@ -90,6 +90,7 @@ export default class Room {
     // Check if player won
     if (this.players[this.turn].won()) {
       this.winner = this.turn;
+      this.players[this.turn].win();
     }
   }
 

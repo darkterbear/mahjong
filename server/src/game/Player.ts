@@ -154,7 +154,7 @@ export default class Player {
       handExposed: this.handExposed,
       discarded: this.discarded,
       turn: this.getPerspectiveTurn(),
-      winner: this.getPerspectiveWinner(), // TODO: if there is winner, display their hand
+      winner: this.getPerspectiveWinner(),
       players: this.getPerspectivePlayers(),
     } as any;
 
@@ -177,9 +177,14 @@ export default class Player {
    * Makes all tiles of this player visible
    * @param t Tile that this player wins with
    */
-  win(t: Tile): void {
-    this.handExposed = [[...this.handExposed.reduce((m, a) => a.concat(m), []), ...this.handConcealed, t]];
+  win(t?: Tile): void {
+    if (t) {
+      this.handConcealed.concat(t);
+    }
+
+    this.handExposed.push(this.handConcealed);
     this.handConcealed = [];
-    this.handExposed[0].sort(Tile.comparator);
+
+    this.handExposed[this.handExposed.length - 1].sort(Tile.comparator);
   }
 }
