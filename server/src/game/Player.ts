@@ -179,7 +179,7 @@ export default class Player {
    */
   win(t?: Tile): void {
     if (t) {
-      this.handConcealed.concat(t);
+      this.handConcealed.push(t);
     }
 
     this.handExposed.push(this.handConcealed);
