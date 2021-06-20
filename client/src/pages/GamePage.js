@@ -246,12 +246,14 @@ export function GamePage() {
   }
 
   // LOG STATE FOR DEBUGGING
+  console.log('################################')
+  console.log('Pending Action', pendingAction)
   console.log('Hand', handConcealed, handExposed)
   console.log('Hover', hover)
   console.log('Players', players)
   console.log('Turn', turn)
-  console.log('Pending Action', pendingAction)
   console.log('Interrupts', interrupts)
+  console.log('Can MJ', canMahjongInterrupt())
 
   return <div id="game-page">
     { pendingAction && 
