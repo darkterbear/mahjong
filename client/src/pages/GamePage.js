@@ -3,6 +3,7 @@ import { useHistory, useLocation } from 'react-router';
 import { socket, authSocket } from '../api';
 import { Scoreboard } from './game/Scoreboard';
 import { PerimeterWall } from './game/PerimeterWall';
+import { CenterDiscards } from './game/CenterDiscards';
 import { PlayerSection } from './game/PlayerSection';
 import { ActionBar } from './game/ActionBar';
 import { SettlementModal } from './game/SettlementModal';
@@ -49,6 +50,13 @@ export function GamePage() {
       <header id="hand-header">
         <span>Round wind: <strong>{state.round_wind}</strong></span>
         <span>Dealer streak: <strong>{state.dealer_streak}</strong></span>
+        <span style={{marginLeft: '2rem', color: '#aaa', fontSize: '12px'}}>
+          phase=<strong>{state.phase}</strong> | turn=
+          <strong>{state.current_turn_seat === state.you.seat ? 'YOU' : `seat ${state.current_turn_seat}`}</strong>
+          {' | actions=['}
+          <strong>{(state.available_actions || []).join(', ') || '(none)'}</strong>
+          {']'}
+        </span>
       </header>
 
       {state.pending_claim_window?.is_robbing_kong_window && (
@@ -66,6 +74,7 @@ export function GamePage() {
       <Scoreboard state={state} />
 
       <PerimeterWall state={state} />
+      <CenterDiscards state={state} />
 
       <PlayerSection state={state} viewer="self" />
       {state.others.map((o) => (

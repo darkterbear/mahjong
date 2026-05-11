@@ -75,9 +75,6 @@ function OtherSection({ state, other }) {
           ))}
         </span>
       </div>
-      <div className="discards-row">
-        {other.discards.map((t, i) => tileImg(t, `disc${i}`))}
-      </div>
     </div>
   );
 }

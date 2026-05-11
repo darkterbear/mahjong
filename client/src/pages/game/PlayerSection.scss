@@ -65,14 +65,3 @@
   border-radius: 4px;
   padding: 2px;
 }
-
-.discards-row {
-  display: flex;
-  flex-wrap: wrap;
-  max-width: 240px;
-  margin-top: 4px;
-}
-.discards-row .tile {
-  width: 32px;
-  cursor: default;
-}

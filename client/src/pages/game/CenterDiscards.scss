@@ -1,0 +1,48 @@
+.center-discards {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 360px;
+  height: 360px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pile {
+  position: absolute;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 280px;
+}
+
+.pile-bottom {
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+}
+.pile-top {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+  flex-direction: row;
+}
+.pile-left {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  flex-direction: row;
+}
+.pile-right {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  flex-direction: row;
+}
+
+.discard-tile {
+  width: 32px;
+  height: auto;
+  margin: 0 -2px;
+}

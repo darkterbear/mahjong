@@ -50,9 +50,9 @@
   left: 0;
   top: 0;
 }
-.wall-slot:nth-child(1) { z-index: 2; }  /* top layer */
+.wall-slot:nth-child(1) { z-index: 20; }  /* top layer — always above all bottom layers */
 .wall-slot:nth-child(2) {
-  z-index: 1;
+  z-index: 10;                            /* bottom layer */
   filter: brightness(0.85);  /* darken the "underneath" tile */
 }
 
@@ -84,7 +84,7 @@
 .wall-slot.highlight {
   filter: drop-shadow(0 0 12px #FF4B12);
   animation: pulse 1.4s ease-in-out infinite;
-  z-index: 3;
+  /* IMPORTANT: do NOT override z-index here — preserve the layer-stack rule. */
 }
 
 .wall-slot.clickable {

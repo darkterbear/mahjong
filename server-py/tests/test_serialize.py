@@ -162,6 +162,35 @@ def test_other_player_pending_flowers_exposed() -> None:
     assert other_seat_1["pending_flowers"] == [35, 38]
 
 
+def test_current_turn_advances_to_next_player_during_claim_window() -> None:
+    h = _setup_playing()
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    # Now in CLAIM_WINDOW; current turn should point at seat 1.
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a", "b", "c", "d"],
+        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+    )
+    assert s["current_turn_seat"] == 1
+
+
+def test_wall_back_draws_top_layer_first_per_stack() -> None:
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=42)
+    h.roll_dice()
+    # Simulate one back-draw.
+    h.game.wall.draw_replacement()
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a", "b", "c", "d"],
+        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+    )
+    # After 1 back draw: the back-most stack's TOP should be gone; BOTTOM still present.
+    # The next_back_position should now point at that BOTTOM (layer 1).
+    nb = s["wall"]["next_back_position"]
+    assert nb is not None
+    assert nb[2] == 1  # layer 1 (bottom)
+
+
 def test_state_update_exposes_kong_eligible_tiles() -> None:
     h = _setup_playing()
     p = h.game.players[0]
