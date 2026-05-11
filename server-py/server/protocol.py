@@ -35,6 +35,7 @@ class ServerEvent(str, Enum):
     DEALING_STEP = "dealing_step"
     HAND_SETTLEMENT = "hand_settlement"
     LOBBY_UPDATE = "lobby_update"
+    START_GAME = "start_game"
 
 
 class AvailableAction(str, Enum):

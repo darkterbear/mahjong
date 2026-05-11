@@ -24,7 +24,7 @@ export function LobbyPage() {
     })
 
     socket.on('start_game', () => {
-      history.replace('/game', { username })
+      history.replace('/game', { username, code })
     })
 
     socket.on('disconnect', () => {
