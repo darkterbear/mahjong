@@ -220,6 +220,73 @@ class Hand:
         action = Action(ActionType.DISCARD, tile=tile_id, player=self.game.current_player)
         self.game.step(action)
 
+    def apply_claim(
+        self,
+        seat: int,
+        claim_type: str,
+        tiles: list[int] | None = None,
+    ) -> None:
+        """Apply a claim from `seat` against the current pending discard.
+
+        Valid claim_types: 'chi', 'peng', 'gang_open', 'hu'.
+        For chi, `tiles` is the [tile_a, tile_b] from claimer's hand.
+        """
+        if self.game.phase != TurnPhase.CLAIM_WINDOW:
+            raise RuntimeError(f"no claim window (phase {self.game.phase})")
+        if seat == self.game.last_discard_player:
+            raise ValueError("discarder cannot claim own discard")
+
+        from subterfuge.types import Action, ActionType, Meld, MeldType
+        tile = self.game.last_discard
+        discarder = self.game.last_discard_player
+
+        if claim_type == "hu":
+            action = Action(ActionType.HU, tile=tile, player=seat)
+            self.game.step(action)
+            self.phase = HandPhase.SETTLEMENT
+            return
+
+        if claim_type == "peng":
+            meld = Meld(
+                meld_type=MeldType.PENG,
+                tiles=[tile, tile, tile],
+                source_player=discarder,
+                source_tile=tile,
+            )
+            action = Action(ActionType.PENG, tile=tile, player=seat, meld=meld)
+            self.game.step(action)
+            return
+
+        if claim_type == "gang_open":
+            meld = Meld(
+                meld_type=MeldType.GANG_OPEN,
+                tiles=[tile] * 4,
+                source_player=discarder,
+                source_tile=tile,
+            )
+            action = Action(ActionType.GANG_CALL, tile=tile, player=seat, meld=meld)
+            self.game.step(action)
+            self.must_draw_back = True
+            return
+
+        if claim_type == "chi":
+            assert tiles is not None and len(tiles) == 2
+            all_tiles = sorted(tiles + [tile])
+            meld = Meld(
+                meld_type=MeldType.CHI,
+                tiles=all_tiles,
+                source_player=discarder,
+                source_tile=tile,
+            )
+            action = Action(
+                ActionType.CHI, tile=tile, player=seat,
+                meld=meld, chi_tiles=tiles,
+            )
+            self.game.step(action)
+            return
+
+        raise ValueError(f"unknown claim_type: {claim_type}")
+
     def close_claim_window_no_winner(self) -> None:
         """Close the claim window with no winning claim; advance to next player's draw.
 

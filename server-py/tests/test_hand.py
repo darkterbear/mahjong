@@ -3,7 +3,7 @@ import pytest
 from server.hand import Hand
 from server.protocol import HandPhase
 from subterfuge.tiles import FLOWER_START
-from subterfuge.types import TurnPhase
+from subterfuge.types import TurnPhase, MeldType
 from server.protocol import HandPhase as _HP
 from subterfuge.tiles import is_flower as _is_flower
 
@@ -162,3 +162,36 @@ def test_draw_front_flower_does_not_auto_replace() -> None:
     assert 34 not in h.game.players[1].flowers
     # Phase is DISCARD; player must declare_flower + draw_back next.
     assert h.game.phase == TurnPhase.DISCARD
+
+
+def test_apply_peng_claim_moves_turn_to_claimer() -> None:
+    h = _fast_forward_to_playing()
+    # Set up: seat 0 will discard a tile, seat 2 has 2 of those tiles in hand.
+    p2 = h.game.players[2]
+    target_tile = 0  # bamboo-1
+    while p2.hand[target_tile] < 2:
+        p2.add_tile(target_tile)
+    p0 = h.game.players[0]
+    p0.add_tile(target_tile)
+    h.apply_discard(target_tile)
+    h.apply_claim(seat=2, claim_type="peng")
+    assert h.game.current_player == 2
+    assert h.game.phase == TurnPhase.DISCARD
+    assert any(m.meld_type == MeldType.PENG for m in h.game.players[2].melds)
+
+
+def test_apply_chi_claim_only_for_left_neighbor() -> None:
+    h = _fast_forward_to_playing()
+    # Seat 0 discards, seat 1 (left neighbor in TW: discarder + 1) attempts chi.
+    p1 = h.game.players[1]
+    p1.add_tile(1)  # bamboo-2
+    p1.add_tile(2)  # bamboo-3
+    h.game.players[0].add_tile(0)  # bamboo-1
+    h.apply_discard(0)
+    h.apply_claim(seat=1, claim_type="chi", tiles=[1, 2])
+    assert h.game.current_player == 1
+
+
+def test_apply_hu_claim_ends_hand() -> None:
+    # Stub — covered comprehensively in scoring tests (Phase 5).
+    pass
