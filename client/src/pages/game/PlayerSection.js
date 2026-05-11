@@ -3,19 +3,6 @@ import { discard, declareFlower } from '../../api';
 import './PlayerSection.scss';
 
 function tileImg(tileId, key, onClick, extraClass = '') {
-  // Flower SVGs aren't on the CDN yet — render as a styled "FlowerN" tile so
-  // it's still clickable and visible.
-  if (isFlower(tileId)) {
-    const n = tileId - 33;  // 1..8
-    return (
-      <div
-        key={key}
-        className={`tile flower-tile ${extraClass}`}
-        onClick={onClick}
-        title={`Flower ${n}`}
-      >花{n}</div>
-    );
-  }
   return (
     <img
       key={key}

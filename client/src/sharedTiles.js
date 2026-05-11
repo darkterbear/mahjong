@@ -10,7 +10,7 @@ const SUITS = {
   flower: 'h',
 };
 
-const TILE_BASE = 'https://files.terranceli.com/mahjong';
+const TILE_BASE = '/assets';
 
 export function tileImageUrl(tileId) {
   if (tileId < 0 || tileId > 41) return `${TILE_BASE}/MJhide.svg`;
