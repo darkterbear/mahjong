@@ -189,3 +189,50 @@ class Hand:
         self.game.current_player = self.dealer_seat
         self.game._is_first_draw = True
         self.game._replacement_draw = False
+
+    # ---- PLAYING phase: draws and discards -----------------------------------
+
+    def draw_front(self) -> int | None:
+        if self.phase != HandPhase.PLAYING:
+            raise RuntimeError(f"draw_front not allowed in phase {self.phase}")
+        if self.game.phase != TurnPhase.DRAW:
+            raise RuntimeError(f"draw_front not allowed in game phase {self.game.phase}")
+        if self.must_draw_back:
+            raise RuntimeError("must draw_back, not draw_front")
+        tile = self.game.wall.draw()
+        if tile is None:
+            # Wall exhausted → hand ends as draw.
+            self.phase = HandPhase.SETTLEMENT
+            self.game.phase = TurnPhase.GAME_OVER
+            return None
+        seat = self.game.current_player
+        if is_flower(tile):
+            self.pending_flowers[seat].append(tile)
+        else:
+            self.game.players[seat].add_tile(tile)
+        self.game.phase = TurnPhase.DISCARD
+        # Reset replacement-draw flag (this was a normal front draw).
+        self.game._replacement_draw = False
+        return tile
+
+    def apply_discard(self, tile_id: int) -> None:
+        from subterfuge.types import Action, ActionType
+        action = Action(ActionType.DISCARD, tile=tile_id, player=self.game.current_player)
+        self.game.step(action)
+
+    def close_claim_window_no_winner(self) -> None:
+        """Close the claim window with no winning claim; advance to next player's draw.
+
+        Used when the next player explicitly draws (closing the window). For
+        Phase 2.3 this is just a helper; full claim-window logic lands in 3.x.
+        """
+        if self.game.phase != TurnPhase.CLAIM_WINDOW:
+            raise RuntimeError(f"no claim window open (phase {self.game.phase})")
+        from subterfuge.types import Action, ActionType
+        # Build an all-pass claim dict to delegate resolution to subterfuge.
+        claims = {
+            i: Action(ActionType.PASS, player=i)
+            for i in range(4)
+            if i != self.game.last_discard_player
+        }
+        self.game.resolve_claim_window(claims)

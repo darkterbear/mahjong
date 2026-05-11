@@ -4,6 +4,8 @@ from server.hand import Hand
 from server.protocol import HandPhase
 from subterfuge.tiles import FLOWER_START
 from subterfuge.types import TurnPhase
+from server.protocol import HandPhase as _HP
+from subterfuge.tiles import is_flower as _is_flower
 
 
 def test_hand_starts_in_pre_dice() -> None:
@@ -98,3 +100,65 @@ def test_finish_flower_resolution_transitions_to_playing() -> None:
     assert h.phase == HandPhase.PLAYING
     assert h.game.phase == TurnPhase.DISCARD
     assert h.game.current_player == h.dealer_seat
+
+
+def _fast_forward_to_playing(seed: int = 99) -> Hand:
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=seed)
+    h.roll_dice()
+    h.deal_initial_hands()
+    # Strip all pending flowers to force PLAYING transition (we don't actually
+    # draw replacements — just clear them, this is a test fast-forward).
+    for s in range(4):
+        h.pending_flowers[s] = []
+    h.flower_resolution_seat = h.dealer_seat
+    h._maybe_finish_flower_resolution()
+    assert h.phase == _HP.PLAYING
+    return h
+
+
+def test_dealer_starts_in_discard_after_resolution() -> None:
+    h = _fast_forward_to_playing()
+    assert h.game.phase == TurnPhase.DISCARD
+    assert h.game.current_player == 0
+
+
+def test_discard_advances_to_claim_window() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    assert h.game.phase == TurnPhase.CLAIM_WINDOW
+    assert h.game.last_discard == tile
+    assert h.game.last_discard_player == 0
+
+
+def test_draw_front_advances_to_discard() -> None:
+    h = _fast_forward_to_playing()
+    # Discard so it's seat 1's turn to draw.
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    h.close_claim_window_no_winner()
+    assert h.game.current_player == 1
+    drawn = h.draw_front()
+    assert drawn is not None
+    assert h.game.phase == TurnPhase.DISCARD
+
+
+def test_draw_front_flower_does_not_auto_replace() -> None:
+    h = _fast_forward_to_playing()
+    # Force the next wall tile to be a flower.
+    h.game.wall.tiles[h.game.wall._front] = 34  # flower id
+    # Discard so seat 1's turn to draw.
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    h.close_claim_window_no_winner()
+    drawn = h.draw_front()
+    assert drawn == 34
+    assert _is_flower(drawn)
+    # Flower lives in pending_flowers (NOT moved to flowers row, NOT in player.hand).
+    assert 34 in h.pending_flowers[1]
+    assert 34 not in h.game.players[1].flowers
+    # Phase is DISCARD; player must declare_flower + draw_back next.
+    assert h.game.phase == TurnPhase.DISCARD
