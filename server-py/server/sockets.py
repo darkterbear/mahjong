@@ -42,9 +42,20 @@ async def disconnect(sid: str) -> None:
     if room is None:
         return
     player = next((p for p in room.players if p.player_id == player_id), None)
-    if player:
+    if player is None:
+        return
+    if room.session is None:
+        # Lobby phase — drop the player and notify remaining lobby viewers.
+        room.remove_player(player_id)
+        remaining = Room.get(code)
+        if remaining is not None:
+            await sio.emit(ServerEvent.LOBBY_UPDATE.value, {
+                "players": [p.username for p in remaining.players],
+                "leader": remaining.leader.username if remaining.leader else None,
+            }, room=code)
+    else:
+        # In-game — keep the player record so they can reconnect with same player_id.
         player.sid = None
-    # Don't kill the room — allow reconnect.
 
 
 @sio.on(ClientEvent.ROLL_DICE.value)

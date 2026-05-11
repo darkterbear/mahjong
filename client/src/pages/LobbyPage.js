@@ -18,7 +18,7 @@ export function LobbyPage() {
     }
 
     // Socket already connected and authed in MenuPage/JoinPage before navigating here
-    socket.on('update_players', (players, leader) => {
+    socket.on('lobby_update', ({ players, leader }) => {
       setPlayers(players)
       setLeader(leader)
     })
@@ -30,6 +30,12 @@ export function LobbyPage() {
     socket.on('disconnect', () => {
       history.replace('/')
     })
+
+    return () => {
+      socket.off('lobby_update')
+      socket.off('start_game')
+      socket.off('disconnect')
+    }
   }, [])
 
   return <div id="lobby-page">

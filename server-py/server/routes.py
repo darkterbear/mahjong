@@ -5,9 +5,20 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from server.room import Room, Player
+from server.protocol import ServerEvent
 
 
 router = APIRouter()
+
+
+async def _emit_lobby_update(room: Room) -> None:
+    # Deferred import to avoid circular dependency (app.py imports routes.py).
+    from server.app import sio
+    payload = {
+        "players": [p.username for p in room.players],
+        "leader": room.leader.username if room.leader else None,
+    }
+    await sio.emit(ServerEvent.LOBBY_UPDATE.value, payload, room=room.code)
 
 
 class CreateRoomBody(BaseModel):
@@ -30,6 +41,7 @@ class StartSessionBody(BaseModel):
 async def create_room(body: CreateRoomBody) -> dict:
     room = Room.create()
     room.add_player(Player(player_id=body.player_id, username=body.username))
+    await _emit_lobby_update(room)
     return {"code": room.code}
 
 
@@ -42,6 +54,7 @@ async def join_room(body: JoinRoomBody) -> dict:
         room.add_player(Player(player_id=body.player_id, username=body.username))
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _emit_lobby_update(room)
     return {
         "players": [p.username for p in room.players],
         "leader": room.leader.username if room.leader else None,
@@ -59,4 +72,5 @@ async def start_session(body: StartSessionBody) -> dict:
         room.start_session()
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await _emit_lobby_update(room)
     return {"started": True}
