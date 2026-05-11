@@ -13,6 +13,14 @@ from server.wall_view import flat_to_position, TILES_PER_SEAT, TOTAL_WALL_TILES
 WIND_NAMES = ["EAST", "SOUTH", "WEST", "NORTH"]
 
 
+def _active_seat(hand: Hand) -> int:
+    if hand.phase == HandPhase.FLOWER_RESOLUTION:
+        return hand.flower_resolution_seat
+    if hand.phase == HandPhase.PRE_DICE:
+        return hand.dealer_seat
+    return hand.game.current_player
+
+
 def build_state_update(
     hand: Hand,
     viewer_seat: int,
@@ -71,7 +79,7 @@ def build_state_update(
         "round_wind": WIND_NAMES[round_wind_index],
         "dealer_seat": hand.dealer_seat,
         "dealer_streak": dealer_streak,
-        "current_turn_seat": hand.game.current_player,
+        "current_turn_seat": _active_seat(hand),
         "you": you,
         "others": others,
         "wall": wall,
@@ -107,14 +115,27 @@ def _wall_payload(hand: Hand) -> dict:
     back_idx = wall._back
     rem = max(0, back_idx - front_idx + 1)
     offset = hand.wall_rotation_offset
-    physical_front = (front_idx + offset) % TOTAL_WALL_TILES if 0 <= front_idx < TOTAL_WALL_TILES else None
-    physical_back = (back_idx + offset) % TOTAL_WALL_TILES if 0 <= back_idx < TOTAL_WALL_TILES else None
-    nf = flat_to_position(physical_front) if physical_front is not None else None
-    nb = flat_to_position(physical_back) if physical_back is not None else None
+    if rem == 0:
+        return {
+            "remaining": 0,
+            "next_front_position": None,
+            "next_back_position": None,
+            "remaining_positions": [],
+        }
+    physical_front = (front_idx + offset) % TOTAL_WALL_TILES
+    physical_back = (back_idx + offset) % TOTAL_WALL_TILES
+    nf = flat_to_position(physical_front)
+    nb = flat_to_position(physical_back)
+    remaining_positions = []
+    for f in range(front_idx, back_idx + 1):
+        physical = (f + offset) % TOTAL_WALL_TILES
+        p = flat_to_position(physical)
+        remaining_positions.append([p.seat, p.stack, p.layer])
     return {
         "remaining": rem,
-        "next_front_position": [nf.seat, nf.stack, nf.layer] if nf else None,
-        "next_back_position": [nb.seat, nb.stack, nb.layer] if nb else None,
+        "next_front_position": [nf.seat, nf.stack, nf.layer],
+        "next_back_position": [nb.seat, nb.stack, nb.layer],
+        "remaining_positions": remaining_positions,
     }
 
 

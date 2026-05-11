@@ -36,21 +36,23 @@
 .hand-row {
   display: flex;
   align-items: center;
-  gap: 1px;
 }
 
 .tile {
-  width: 48px;
+  width: 56px;
   height: auto;
+  margin: 0 -6px;          /* overlap with neighbour */
   cursor: pointer;
   transition: filter 0.15s, transform 0.15s;
+  position: relative;
 }
 .tile:hover {
   filter: drop-shadow(0 0 8px #527aff);
   transform: translateY(-4px);
+  z-index: 5;              /* lift above neighbours */
 }
 .tile.drawn {
-  margin-left: 6px;
+  margin-left: 8px;        /* small visual gap for the freshly-drawn tile */
 }
 
 .gap {

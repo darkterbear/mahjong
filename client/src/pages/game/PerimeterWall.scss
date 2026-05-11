@@ -7,7 +7,6 @@
 .perimeter-wall-side {
   position: absolute;
   display: flex;
-  gap: 2px;
 
   &.bottom {
     bottom: 18%;
@@ -35,13 +34,38 @@
   }
 }
 
+/* Each stack has 2 layers; overlap them so they look like one thick stack. */
 .stack {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  width: 24px;
+  height: 36px;          /* tile height + a small offset for the bottom layer */
+  margin: 0 1px;
 }
 
-.wall-tile {
+.wall-slot {
+  position: absolute;
   width: 24px;
   height: 32px;
   display: block;
+  left: 0;
+}
+.wall-slot:nth-child(1) {  /* layer 0 (top) */
+  top: 0;
+  z-index: 2;
+}
+.wall-slot:nth-child(2) {  /* layer 1 (bottom) */
+  top: 4px;
+  left: -2px;
+  z-index: 1;
+  filter: brightness(0.85);  /* darken the "underneath" tile */
+}
+
+.wall-slot.empty {
+  background: transparent;
+}
+
+.wall-slot.highlight {
+  filter: drop-shadow(0 0 12px #FF4B12);
+  animation: pulse 1.4s ease-in-out infinite;
+  z-index: 3;
 }

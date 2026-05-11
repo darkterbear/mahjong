@@ -139,6 +139,18 @@ def test_state_update_normal_claim_window_not_robbing() -> None:
     assert s["pending_claim_window"]["is_robbing_kong_window"] is False
 
 
+def test_current_turn_seat_in_flower_resolution() -> None:
+    h = Hand(dealer_seat=2, round_wind_index=0, dealer_streak=0, seed=1)
+    h.roll_dice()
+    h.deal_initial_hands()
+    # During FLOWER_RESOLUTION, current_turn_seat should reflect flower_resolution_seat.
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    assert s["current_turn_seat"] == h.flower_resolution_seat
+
+
 def test_state_update_exposes_kong_eligible_tiles() -> None:
     h = _setup_playing()
     p = h.game.players[0]
