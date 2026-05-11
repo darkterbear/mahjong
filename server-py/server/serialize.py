@@ -14,9 +14,7 @@ WIND_NAMES = ["EAST", "SOUTH", "WEST", "NORTH"]
 
 
 def _active_seat(hand: Hand) -> int:
-    if hand.phase == HandPhase.FLOWER_RESOLUTION:
-        return hand.flower_resolution_seat
-    if hand.phase == HandPhase.PRE_DICE:
+    if hand.phase in (HandPhase.PRE_DICE, HandPhase.FLOWER_RESOLUTION):
         return hand.dealer_seat
     return hand.game.current_player
 

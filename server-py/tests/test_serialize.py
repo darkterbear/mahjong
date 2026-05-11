@@ -9,8 +9,7 @@ def _setup_playing(seed: int = 0) -> Hand:
     h.deal_initial_hands()
     for s in range(4):
         h.pending_flowers[s] = []
-    h.flower_resolution_seat = 0
-    h._maybe_finish_flower_resolution()
+    h.enter_playing()
     return h
 
 
@@ -143,12 +142,12 @@ def test_current_turn_seat_in_flower_resolution() -> None:
     h = Hand(dealer_seat=2, round_wind_index=0, dealer_streak=0, seed=1)
     h.roll_dice()
     h.deal_initial_hands()
-    # During FLOWER_RESOLUTION, current_turn_seat should reflect flower_resolution_seat.
+    # During FLOWER_RESOLUTION, current_turn_seat should reflect the dealer_seat.
     s = build_state_update(
         hand=h, viewer_seat=0, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
     )
-    assert s["current_turn_seat"] == h.flower_resolution_seat
+    assert s["current_turn_seat"] == h.dealer_seat
 
 
 def test_other_player_pending_flowers_exposed() -> None:

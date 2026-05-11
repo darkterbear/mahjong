@@ -11,8 +11,7 @@ def _setup_playing(seed: int = 7) -> Hand:
     h.deal_initial_hands()
     for s in range(4):
         h.pending_flowers[s] = []
-    h.flower_resolution_seat = 0
-    h._maybe_finish_flower_resolution()
+    h.enter_playing()
     return h
 
 

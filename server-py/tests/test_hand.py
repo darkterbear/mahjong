@@ -49,54 +49,13 @@ def _force_flower_into_pending(hand: Hand, seat: int, flower_id: int) -> None:
     hand.pending_flowers[seat].append(flower_id)
 
 
-def test_flower_resolution_turn_order_dealer_first() -> None:
-    h = Hand(dealer_seat=2, round_wind_index=0, dealer_streak=0, seed=1)
-    h.roll_dice()
-    h.deal_initial_hands()
-    assert h.flower_resolution_seat == 2  # dealer first
-
-
-def test_declare_flower_then_draw_back_loops() -> None:
-    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=1)
-    h.roll_dice()
-    h.deal_initial_hands()
-    # Force a flower in seat 0's pending for deterministic test.
-    _force_flower_into_pending(h, 0, FLOWER_START)
-    initial_pending = len(h.pending_flowers[0])
-    initial_player_hand = h.game.players[0].hand_count
-    h.flower_resolution_seat = 0
-    h.declare_flower(FLOWER_START)
-    # Pending list lost one flower; player.flowers got it.
-    assert len(h.pending_flowers[0]) == initial_pending - 1
-    assert FLOWER_START in h.game.players[0].flowers
-    assert h.must_draw_back is True
-    h.draw_back()
-    # After draw_back, total tiles owned by seat 0 is back to original (one
-    # replacement tile arrived in either pending_flowers or game.hand).
-    new_total = h.game.players[0].hand_count + len(h.pending_flowers[0])
-    assert new_total == initial_player_hand + initial_pending  # one replacement
-
-
-def test_flower_resolution_advances_when_seat_clean() -> None:
-    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=1)
-    h.roll_dice()
-    h.deal_initial_hands()
-    # Force seat 0 to be flower-free; seed=1 ensures seat 1 has pending flowers.
-    h.pending_flowers[0] = []
-    h.flower_resolution_seat = 0
-    h._advance_flower_resolution_seat_if_clean()
-    assert h.flower_resolution_seat == 1  # advances and stops at seat with pending
-
-
-def test_finish_flower_resolution_transitions_to_playing() -> None:
+def test_enter_playing_after_resolution() -> None:
     h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=99)
     h.roll_dice()
     h.deal_initial_hands()
-    # Fast-forward by clearing all pending flowers.
     for s in range(4):
         h.pending_flowers[s] = []
-    h.flower_resolution_seat = h.dealer_seat
-    h._maybe_finish_flower_resolution()
+    h.enter_playing()
     assert h.phase == HandPhase.PLAYING
     assert h.game.phase == TurnPhase.DISCARD
     assert h.game.current_player == h.dealer_seat
@@ -110,8 +69,7 @@ def _fast_forward_to_playing(seed: int = 99) -> Hand:
     # draw replacements — just clear them, this is a test fast-forward).
     for s in range(4):
         h.pending_flowers[s] = []
-    h.flower_resolution_seat = h.dealer_seat
-    h._maybe_finish_flower_resolution()
+    h.enter_playing()
     assert h.phase == _HP.PLAYING
     return h
 
@@ -144,24 +102,6 @@ def test_draw_front_advances_to_discard() -> None:
     assert drawn is not None
     assert h.game.phase == TurnPhase.DISCARD
 
-
-def test_draw_front_flower_does_not_auto_replace() -> None:
-    h = _fast_forward_to_playing()
-    # Force the next wall tile to be a flower.
-    h.game.wall.tiles[h.game.wall._front] = 34  # flower id
-    # Discard so seat 1's turn to draw.
-    p = h.game.players[0]
-    tile = next(t for t in range(34) if p.hand[t] > 0)
-    h.apply_discard(tile)
-    h.close_claim_window_no_winner()
-    drawn = h.draw_front()
-    assert drawn == 34
-    assert _is_flower(drawn)
-    # Flower lives in pending_flowers (NOT moved to flowers row, NOT in player.hand).
-    assert 34 in h.pending_flowers[1]
-    assert 34 not in h.game.players[1].flowers
-    # Phase is DISCARD; player must declare_flower + draw_back next.
-    assert h.game.phase == TurnPhase.DISCARD
 
 
 def test_apply_peng_claim_moves_turn_to_claimer() -> None:
@@ -245,16 +185,7 @@ def test_available_actions_flower_resolution() -> None:
     h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=1)
     h.roll_dice()
     h.deal_initial_hands()
-    if not h._has_flower_in_hand(0):
-        # Inject a flower so seat 0 has work to do.
-        h.pending_flowers[0].append(34)
-    h.flower_resolution_seat = 0
-    h.must_draw_back = False
-    actions = h.available_actions(0)
-    assert AvailableAction.DECLARE_FLOWER in actions
-    h.must_draw_back = True
-    actions = h.available_actions(0)
-    assert AvailableAction.DRAW_BACK in actions
+    assert h.available_actions(0) == []
 
 
 def test_available_actions_playing_current_player_in_draw() -> None:
@@ -334,3 +265,28 @@ def test_record_co_hu_response_completes() -> None:
     results = h.finalize_co_hu()
     assert len(results) == 2
     assert h.co_hu_active is False
+
+
+def test_auto_resolve_round_drains_pending_for_seat() -> None:
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=0)
+    h.roll_dice()
+    h.deal_initial_hands()
+    h.pending_flowers[0] = [34, 35]  # 2 pending flowers
+    steps = h.auto_resolve_round_for_seat(0)
+    assert len(steps) == 2  # both resolved this round
+    assert h.game.players[0].flowers[-2:] == [34, 35]
+
+
+def test_auto_resolve_round_defers_replacement_flower_to_next_round() -> None:
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=0)
+    h.roll_dice()
+    h.deal_initial_hands()
+    h.pending_flowers[0] = [34]
+    # Force the back-of-wall tile to be a flower.
+    h.game.wall.tiles[h.game.wall._back] = 35
+    steps = h.auto_resolve_round_for_seat(0)
+    assert len(steps) == 1
+    assert steps[0]["replacement"] == 35
+    assert steps[0]["replacement_is_flower"] is True
+    # The new flower waits for the next round; it should NOT be in this-round steps.
+    assert h.pending_flowers[0] == [35]

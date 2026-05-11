@@ -39,7 +39,7 @@
   position: relative;
   width: 24px;
   height: 36px;          /* tile height + a small offset for the bottom layer */
-  margin: 0 1px;
+  margin: 0 -2px;        /* lateral overlap to suggest tightly-adjacent tiles */
 }
 
 .wall-slot {
@@ -48,16 +48,33 @@
   height: 32px;
   display: block;
   left: 0;
-}
-.wall-slot:nth-child(1) {  /* layer 0 (top) */
   top: 0;
-  z-index: 2;
 }
-.wall-slot:nth-child(2) {  /* layer 1 (bottom) */
-  top: 4px;
-  left: -2px;
+.wall-slot:nth-child(1) { z-index: 2; }  /* top layer */
+.wall-slot:nth-child(2) {
   z-index: 1;
   filter: brightness(0.85);  /* darken the "underneath" tile */
+}
+
+/* Per-side offset: bottom-layer position relative to top-layer.
+ * Local CSS coordinates inside each rotated wall-side; the rotation maps
+ * them to the desired on-screen direction.
+ * Bottom wall (no rotation): bottom-layer appears upper-right on screen.
+ * Top wall (180° rotation): same local values, rotation inverts to match.
+ * Left wall (90° rotation): bottom-layer appears bottom-right on screen.
+ * Right wall (-90° rotation): bottom-layer appears upper-left on screen.
+ */
+.perimeter-wall-side.bottom .wall-slot:nth-child(2) {
+  top: -4px; left: 4px;
+}
+.perimeter-wall-side.top .wall-slot:nth-child(2) {
+  top: -4px; left: 4px;
+}
+.perimeter-wall-side.left .wall-slot:nth-child(2) {
+  top: -4px; left: -4px;
+}
+.perimeter-wall-side.right .wall-slot:nth-child(2) {
+  top: -4px; left: -4px;
 }
 
 .wall-slot.empty {

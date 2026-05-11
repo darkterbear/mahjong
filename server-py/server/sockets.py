@@ -6,10 +6,11 @@ import time
 from typing import Optional
 
 from server.app import sio
-from server.protocol import ClientEvent, ServerEvent
+from server.protocol import ClientEvent, ServerEvent, HandPhase
 from server.room import Room
 from server.serialize import build_state_update
 from server.session import build_hand_result_from_game
+from subterfuge.types import TurnPhase, Wind
 
 
 SID_TO_CONTEXT: dict[str, tuple[str, str]] = {}  # sid → (room_code, player_id)
@@ -88,6 +89,31 @@ async def on_roll_dice(sid: str, data: dict) -> None:
     await asyncio.sleep(DEAL_STEP_DELAY)
     await _broadcast_state(room)
 
+    # Auto-resolve flowers from the initial deal.
+    # Rule: each player drains ALL their currently-pending flowers in their
+    # turn (drawing all replacements); any replacement that's itself a flower
+    # waits for the NEXT round. Continue rounds until nobody has pending.
+    FLOWER_STEP_DELAY = 0.4
+    while hand.has_any_pending_flowers():
+        for offset in range(4):
+            seat = (hand.dealer_seat + offset) % 4
+            steps = hand.auto_resolve_round_for_seat(seat)
+            if not steps:
+                continue
+            for step in steps:
+                await sio.emit("flower_resolved", {**step, "seat": seat}, room=room.code)
+                await _broadcast_state(room)
+                special = hand.check_special_flower_win()
+                if special is not None:
+                    await _settle_flower_special_win(room, hand, special)
+                    return
+                if hand.phase == HandPhase.SETTLEMENT:  # wall exhausted
+                    await _settle_single_or_multi(room)
+                    return
+                await asyncio.sleep(FLOWER_STEP_DELAY)
+    hand.enter_playing()
+    await _broadcast_state(room)
+
 
 @sio.on(ClientEvent.DRAW_FRONT.value)
 async def on_draw_front(sid: str, data: dict) -> None:
@@ -119,7 +145,7 @@ async def on_draw_back(sid: str, data: dict) -> None:
     hand = room.session.current_hand
     if not hand: return
     seat = room.session.seats.index(player.player_id)
-    if seat not in (hand.game.current_player, hand.flower_resolution_seat):
+    if seat != hand.game.current_player:
         return
     hand.snapshot()
     hand.draw_back()
@@ -140,17 +166,6 @@ async def on_discard(sid: str, data: dict) -> None:
     hand.snapshot()
     hand.apply_discard(data["tile_id"])
     LAST_DISCARD_TIME[room.code] = time.monotonic()
-    await _broadcast_state(room)
-
-
-@sio.on(ClientEvent.DECLARE_FLOWER.value)
-async def on_declare_flower(sid: str, data: dict) -> None:
-    room, player = _ctx(sid)
-    if not room or not room.session: return
-    hand = room.session.current_hand
-    if not hand: return
-    hand.snapshot()
-    hand.declare_flower(data["tile_id"])
     await _broadcast_state(room)
 
 
@@ -326,6 +341,47 @@ async def _settle_single_or_multi(room: Room) -> None:
         "cumulative": s.cumulative_scores,
         "next_dealer_seat": s.next_hand_dealer_seat(),
     }, room=room.code)
+
+
+async def _settle_flower_special_win(room: Room, hand, special: tuple[int, int | None]) -> None:
+    """Settle 八仙过海 / 七抢一 detected during flower resolution."""
+    from subterfuge.engine.rulesets.dan_full import DAN_FULL_RULESET
+    from subterfuge.engine.rulesets.base import ScoringContext, PaymentContext
+    from subterfuge.types import GameResult, TurnPhase as _TP
+    winner_seat, sole_payer = special
+    p = hand.game.players[winner_seat]
+    ctx = ScoringContext(
+        hand=p.hand, declared_melds=p.melds, winning_tile=-1,
+        is_self_draw=(sole_payer is None),
+        seat_wind=p.seat_wind, round_wind=hand.game.config.round_wind,
+        flowers=list(p.flowers), is_dealer=p.is_dealer,
+        is_last_tile=False, is_robbing_kong=False, is_replacement_draw=False,
+        is_first_draw=True, wall_remaining=hand.game.wall.remaining,
+        dealer_streak=hand.dealer_streak,
+        other_flowers=[
+            list(hand.game.players[i].flowers) + list(hand.pending_flowers[i])
+            if i != winner_seat else []
+            for i in range(4)
+        ],
+    )
+    tai, breakdown = DAN_FULL_RULESET.score(ctx)
+    pay_ctx = PaymentContext(
+        winner=winner_seat,
+        discarder=sole_payer if sole_payer is not None else -1,
+        is_self_draw=(sole_payer is None),
+        dealer=hand.dealer_seat, dealer_streak=hand.dealer_streak,
+        num_players=4, sole_payer=sole_payer,
+    )
+    payments = DAN_FULL_RULESET.settle(tai, breakdown, pay_ctx)
+    hand.game.result = GameResult(
+        winner=winner_seat, winning_tile=-1,
+        is_self_draw=(sole_payer is None), is_robbing_kong=False,
+        tai=tai, tai_breakdown=breakdown, payments=payments,
+        discarder=sole_payer if sole_payer is not None else -1,
+    )
+    hand.phase = HandPhase.SETTLEMENT
+    hand.game.phase = _TP.GAME_OVER
+    await _settle_single_or_multi(room)
 
 
 async def _finalize_co_hu(room: Room) -> None:

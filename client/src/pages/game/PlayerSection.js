@@ -1,5 +1,5 @@
-import { tileImageUrl, hiddenTileUrl, isFlower } from '../../sharedTiles';
-import { discard, declareFlower } from '../../api';
+import { tileImageUrl, hiddenTileUrl } from '../../sharedTiles';
+import { discard } from '../../api';
 import './PlayerSection.scss';
 
 function tileImg(tileId, key, onClick, extraClass = '') {
@@ -22,14 +22,8 @@ export function PlayerSection({ state, viewer, other }) {
 function SelfSection({ state }) {
   const { hand, melds, flowers, seat_wind } = state.you;
   const canDiscard = state.available_actions.includes('discard');
-  const canDeclareFlower = state.available_actions.includes('declare_flower');
 
-  const onTileClick = (tileId, indexInHand) => {
-    console.log('[tile click]', { tileId, isFlower: isFlower(tileId), canDiscard, canDeclareFlower, available: state.available_actions });
-    if (canDeclareFlower && isFlower(tileId)) {
-      declareFlower(tileId);
-      return;
-    }
+  const onTileClick = (tileId) => {
     if (canDiscard) {
       discard(tileId);
     }

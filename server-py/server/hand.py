@@ -51,7 +51,6 @@ class Hand:
 
         self.phase: HandPhase = HandPhase.PRE_DICE
         self.dice_result: Optional[DiceResult] = None
-        self.flower_resolution_seat: int = 0
         self.must_draw_back: bool = False
         self._snapshots: list = []
         self.pending_flowers: list[list[int]] = [[], [], [], []]
@@ -60,6 +59,8 @@ class Hand:
         self.co_hu_remaining: list[int] = []
         self.co_hu_declined: list[int] = []
         self.co_hu_active: bool = False
+        # NOTE: flower_resolution_seat removed — auto-resolution is orchestrated
+        # server-side in sockets.py using round-robin over pending_flowers.
 
     def roll_dice(self) -> DiceResult:
         if self.phase != HandPhase.PRE_DICE:
@@ -84,9 +85,9 @@ class Hand:
     def deal_initial_hands(self) -> None:
         """Deal 16 to each, plus 1 extra for dealer = 17.
 
-        Uses Wall.draw() directly. Flowers go straight into hand at this
-        stage (they are NOT auto-replaced); the client resolves them in the
-        FLOWER_RESOLUTION phase.
+        Uses Wall.draw() directly. Flowers go straight into pending_flowers at
+        this stage (they are NOT auto-replaced yet); the server resolves them
+        automatically in round-robin order after dealing is complete.
         """
         if self.phase != HandPhase.DEALING:
             raise RuntimeError(f"deal not allowed in phase {self.phase}")
@@ -104,7 +105,6 @@ class Hand:
         self._place_initial_tile(self.dealer_seat, tile)
 
         self.phase = HandPhase.FLOWER_RESOLUTION
-        self._begin_flower_resolution()
 
     def _place_initial_tile(self, seat: int, tile: int) -> None:
         """Place a freshly-drawn initial tile into a seat's hand or pending flowers.
@@ -119,83 +119,105 @@ class Hand:
         else:
             self.game.players[seat].add_tile(tile)
 
-    # ---- Flower resolution ----------------------------------------------------
+    # ---- Flower resolution (auto-server-side) ----------------------------------
 
-    def _begin_flower_resolution(self) -> None:
-        self.flower_resolution_seat = self.dealer_seat
-        self.must_draw_back = False
-        self._advance_flower_resolution_seat_if_clean()
+    def auto_resolve_round_for_seat(self, seat: int) -> list[dict]:
+        """Resolve all currently-pending flowers for `seat` in ONE round.
 
-    def declare_flower(self, tile_id: int) -> None:
-        if self.phase not in (HandPhase.FLOWER_RESOLUTION, HandPhase.PLAYING):
-            raise RuntimeError(f"declare_flower not allowed in phase {self.phase}")
-        if not is_flower(tile_id):
-            raise ValueError(f"tile {tile_id} is not a flower")
-        seat = self._active_flower_seat()
-        if tile_id not in self.pending_flowers[seat]:
-            raise ValueError(f"seat {seat} does not hold flower {tile_id}")
-        self.pending_flowers[seat].remove(tile_id)
-        self.game.players[seat].add_flower(tile_id)
-        self.must_draw_back = True
+        Snapshots seat's current pending_flowers, then for each: moves to
+        player.flowers and draws a replacement from the back of the wall.
+        Replacements that are themselves flowers go into pending_flowers[seat]
+        for the NEXT round; non-flower replacements go into the player's hand.
 
-    def _active_flower_seat(self) -> int:
-        if self.phase == HandPhase.FLOWER_RESOLUTION:
-            return self.flower_resolution_seat
-        return self.game.current_player
+        Returns a list of step dicts for client animation:
+            [{"flower": id, "replacement": id_or_None, "replacement_is_flower": bool}, ...]
+        If a replacement draw exhausts the wall, the function stops, sets
+        SETTLEMENT phase, and the last step has "wall_exhausted": True.
+        """
+        steps: list[dict] = []
+        if not self.pending_flowers[seat]:
+            return steps
+        # Snapshot the queue for this round so newly-arrived flowers wait.
+        this_round = list(self.pending_flowers[seat])
+        self.pending_flowers[seat] = []
+        next_round: list[int] = []
+        for flower in this_round:
+            self.game.players[seat].add_flower(flower)
+            replacement = self.game.wall.draw_replacement()
+            if replacement is None:
+                self.phase = HandPhase.SETTLEMENT
+                self.game.phase = TurnPhase.GAME_OVER
+                steps.append({"flower": flower, "replacement": None,
+                              "replacement_is_flower": False, "wall_exhausted": True})
+                # Keep the rest of this_round un-resolved; restore them to pending.
+                # Per spec the hand ends as draw, so it doesn't really matter, but
+                # leaving state consistent is safer.
+                idx = this_round.index(flower)
+                remaining = this_round[idx + 1:]
+                self.pending_flowers[seat] = next_round + remaining
+                return steps
+            if is_flower(replacement):
+                next_round.append(replacement)
+                steps.append({"flower": flower, "replacement": replacement,
+                              "replacement_is_flower": True, "wall_exhausted": False})
+            else:
+                self.game.players[seat].add_tile(replacement)
+                steps.append({"flower": flower, "replacement": replacement,
+                              "replacement_is_flower": False, "wall_exhausted": False})
+        # Newly-drawn flowers wait for the next round.
+        self.pending_flowers[seat] = next_round
+        return steps
+
+    def has_any_pending_flowers(self) -> bool:
+        return any(self.pending_flowers[s] for s in range(4))
+
+    def check_special_flower_win(self) -> tuple[int, int | None] | None:
+        """After an auto-declaration, check for 八仙过海 / 七抢一."""
+        from server.special_flowers import detect_special_flower_win
+        per_seat_flowers = [
+            list(self.game.players[s].flowers) + list(self.pending_flowers[s])
+            for s in range(4)
+        ]
+        return detect_special_flower_win(
+            per_seat_flowers=per_seat_flowers,
+            ruleset_triggers_seven_steal=True,
+        )
+
+    def enter_playing(self) -> None:
+        """Transition from FLOWER_RESOLUTION to PLAYING."""
+        self.phase = HandPhase.PLAYING
+        self.game.phase = TurnPhase.DISCARD
+        self.game.current_player = self.dealer_seat
+        self.game._is_first_draw = True
+        self.game._replacement_draw = False
 
     def draw_back(self) -> None:
+        """Draw a replacement tile from the back of the wall (for a gang).
+
+        If the replacement is itself a flower, auto-resolve and continue
+        drawing replacements until a non-flower lands.
+        """
         if not self.must_draw_back:
             raise RuntimeError("no replacement draw owed")
+        seat = self.game.current_player
         tile = self.game.wall.draw_replacement()
         if tile is None:
-            # Wall exhausted on a replacement — hand ends as draw.
             self.phase = HandPhase.SETTLEMENT
             self.game.phase = TurnPhase.GAME_OVER
             self.must_draw_back = False
             return
-        seat = self._active_flower_seat()
-        if is_flower(tile):
-            # Replacement was itself a flower — pending list, will need another draw_back.
-            self.pending_flowers[seat].append(tile)
-            # must_draw_back stays True implicitly only if the player declares
-            # this newly-arrived flower next. Spec: each draw_back resolves one
-            # owed replacement; subsequent flower handling is its own declare→draw_back cycle.
-            self.must_draw_back = False
-        else:
-            self.game.players[seat].add_tile(tile)
-            # Flag for 杠上 if we're in PLAYING (replacement after gang/flower).
-            if self.phase == HandPhase.PLAYING:
-                self.game._replacement_draw = True
-            self.must_draw_back = False
-        if self.phase == HandPhase.FLOWER_RESOLUTION:
-            self._advance_flower_resolution_seat_if_clean()
-            self._maybe_finish_flower_resolution()
-
-    def _advance_flower_resolution_seat_if_clean(self) -> None:
-        """If the active flower-resolution seat has no pending flowers, advance to next seat."""
-        while True:
-            if self._has_flower_in_hand(self.flower_resolution_seat):
+        # Chain flower resolution: if we drew a flower, declare it and draw again.
+        while is_flower(tile):
+            self.game.players[seat].add_flower(tile)
+            tile = self.game.wall.draw_replacement()
+            if tile is None:
+                self.phase = HandPhase.SETTLEMENT
+                self.game.phase = TurnPhase.GAME_OVER
+                self.must_draw_back = False
                 return
-            next_seat = (self.flower_resolution_seat + 1) % 4
-            if next_seat == self.dealer_seat:
-                # Cycled all 4 — done.
-                return
-            self.flower_resolution_seat = next_seat
-
-    def _has_flower_in_hand(self, seat: int) -> bool:
-        return len(self.pending_flowers[seat]) > 0
-
-    def _maybe_finish_flower_resolution(self) -> None:
-        if self.phase != HandPhase.FLOWER_RESOLUTION:
-            return
-        if any(self._has_flower_in_hand(s) for s in range(4)):
-            return
-        # All clean → enter PLAYING.
-        self.phase = HandPhase.PLAYING
-        self.game.phase = TurnPhase.DISCARD  # dealer already drew their 17th
-        self.game.current_player = self.dealer_seat
-        self.game._is_first_draw = True
-        self.game._replacement_draw = False
+        self.game.players[seat].add_tile(tile)
+        self.game._replacement_draw = True
+        self.must_draw_back = False
 
     # ---- PLAYING phase: draws and discards -----------------------------------
 
@@ -206,20 +228,28 @@ class Hand:
             raise RuntimeError(f"draw_front not allowed in game phase {self.game.phase}")
         if self.must_draw_back:
             raise RuntimeError("must draw_back, not draw_front")
+        seat = self.game.current_player
         tile = self.game.wall.draw()
         if tile is None:
-            # Wall exhausted → hand ends as draw.
+            # Wall exhausted on the front → hand ends as draw.
             self.phase = HandPhase.SETTLEMENT
             self.game.phase = TurnPhase.GAME_OVER
             return None
-        seat = self.game.current_player
-        if is_flower(tile):
-            self.pending_flowers[seat].append(tile)
-        else:
-            self.game.players[seat].add_tile(tile)
+        # Chain any flower draws: each flower → declare, replacement from back.
+        drew_any_flower = False
+        while is_flower(tile):
+            drew_any_flower = True
+            self.game.players[seat].add_flower(tile)
+            tile = self.game.wall.draw_replacement()
+            if tile is None:
+                self.phase = HandPhase.SETTLEMENT
+                self.game.phase = TurnPhase.GAME_OVER
+                return None
+        self.game.players[seat].add_tile(tile)
         self.game.phase = TurnPhase.DISCARD
-        # Reset replacement-draw flag (this was a normal front draw).
-        self.game._replacement_draw = False
+        # 杠上 flag only if the final non-flower came from the back of the wall
+        # (i.e., we chained through at least one flower).
+        self.game._replacement_draw = drew_any_flower
         return tile
 
     def apply_discard(self, tile_id: int) -> None:
@@ -474,13 +504,7 @@ class Hand:
             return []
 
         if self.phase == HandPhase.FLOWER_RESOLUTION:
-            if seat != self.flower_resolution_seat:
-                return []
-            if self.must_draw_back:
-                return [AvailableAction.DRAW_BACK]
-            if self._has_flower_in_hand(seat):
-                return [AvailableAction.DECLARE_FLOWER]
-            return []
+            return []  # auto-resolved by the server; no user action needed
 
         if self.phase == HandPhase.SETTLEMENT:
             # next-hand control handled at session level; return [] here.
@@ -495,9 +519,6 @@ class Hand:
                           else AvailableAction.DRAW_FRONT)
 
         if self.game.phase == TurnPhase.DISCARD and is_current:
-            # Player must declare flower if they hold one.
-            if self._has_flower_in_hand(seat):
-                result.append(AvailableAction.DECLARE_FLOWER)
             if self.must_draw_back:
                 result.append(AvailableAction.DRAW_BACK)
             else:

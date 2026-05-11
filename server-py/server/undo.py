@@ -17,7 +17,6 @@ def take_snapshot(hand) -> HandSnapshot:
         "game": copy.deepcopy(hand.game),
         "phase": hand.phase,
         "must_draw_back": hand.must_draw_back,
-        "flower_resolution_seat": hand.flower_resolution_seat,
         "dice_result": copy.deepcopy(hand.dice_result),
         "pending_flowers": copy.deepcopy(hand.pending_flowers),
         "wall_rotation_offset": hand.wall_rotation_offset,
@@ -32,7 +31,6 @@ def restore_snapshot(hand, snap: HandSnapshot) -> None:
     hand.game = snap.payload["game"]
     hand.phase = snap.payload["phase"]
     hand.must_draw_back = snap.payload["must_draw_back"]
-    hand.flower_resolution_seat = snap.payload["flower_resolution_seat"]
     hand.dice_result = snap.payload["dice_result"]
     hand.pending_flowers = snap.payload["pending_flowers"]
     hand.wall_rotation_offset = snap.payload["wall_rotation_offset"]
