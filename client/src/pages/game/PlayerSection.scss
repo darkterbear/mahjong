@@ -65,3 +65,23 @@
   border-radius: 4px;
   padding: 2px;
 }
+
+.flower-row {
+  display: inline-flex;
+  margin-left: 12px;
+  gap: 2px;
+  background: rgba(255,224,160,0.18);  /* faint warm tint */
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.meta-row.active-turn {
+  color: #527aff;
+  font-weight: bold;
+  animation: pulse-blue-text 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-blue-text {
+  0%, 100% { text-shadow: 0 0 4px #527aff; }
+  50%      { text-shadow: 0 0 12px #527aff; }
+}

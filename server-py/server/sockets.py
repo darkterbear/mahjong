@@ -126,7 +126,10 @@ async def on_draw_front(sid: str, data: dict) -> None:
     if time.monotonic() - last < 0.5:
         return  # silently drop
     seat = room.session.seats.index(player.player_id)
-    if seat != hand.game.current_player:
+    expected_seat = hand.game.current_player
+    if hand.game.phase.name == "CLAIM_WINDOW" and hand.game.last_discard_player is not None:
+        expected_seat = (hand.game.last_discard_player + 1) % 4
+    if seat != expected_seat:
         return
     hand.snapshot()
     if hand.game.phase.name == "CLAIM_WINDOW":
@@ -260,7 +263,10 @@ async def on_undo(sid: str, data: dict) -> None:
     hand = room.session.current_hand
     if not hand: return
     seat = room.session.seats.index(player.player_id)
-    if seat != hand.game.current_player:
+    expected_seat = hand.game.current_player
+    if hand.game.phase.name == "CLAIM_WINDOW" and hand.game.last_discard_player is not None:
+        expected_seat = (hand.game.last_discard_player + 1) % 4
+    if seat != expected_seat:
         return
     try:
         hand.undo()
