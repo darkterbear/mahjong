@@ -1,0 +1,23 @@
+.action-bar {
+  position: absolute;
+  bottom: 9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 6;
+
+  button {
+    background: #527aff;
+    color: white;
+    border: 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.undo {
+    background: #6b6b6b;
+    margin-left: 24px;
+  }
+}
