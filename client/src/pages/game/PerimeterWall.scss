@@ -71,10 +71,10 @@
   top: -4px; left: 4px;
 }
 .perimeter-wall-side.left .wall-slot:nth-child(2) {
-  top: -4px; left: -8px;
+  top: -4px; left: -12px;
 }
 .perimeter-wall-side.right .wall-slot:nth-child(2) {
-  top: -4px; left: -8px;
+  top: -4px; left: -12px;
 }
 
 .wall-slot.empty {
@@ -98,8 +98,8 @@
 }
 
 .perimeter-wall-side.left .wall-slot:nth-child(1) {
-  left: -8px;  /* half-tile shift (correct direction for left wall) */
+  left: -12px;  /* half-tile shift (correct direction for left wall) */
 }
 .perimeter-wall-side.right .wall-slot:nth-child(1) {
-  left: -8px;  /* half-tile shift (correct direction for right wall) */
+  left: -12px;  /* half-tile shift (correct direction for right wall) */
 }
