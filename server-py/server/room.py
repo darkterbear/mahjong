@@ -56,6 +56,8 @@ class Room:
             raise RuntimeError("cannot join: session in progress")
         if len(self.players) >= 4:
             raise ValueError("room full")
+        if any(existing.player_id == p.player_id for existing in self.players):
+            raise ValueError("player_id already in this room")
         self.players.append(p)
         if self.leader is None:
             self.leader = p

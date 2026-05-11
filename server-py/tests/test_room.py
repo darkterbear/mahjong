@@ -68,3 +68,13 @@ def test_start_session_creates_session_with_4_players() -> None:
     r.start_session(seed=0)
     assert r.session is not None
     assert sorted(r.session.seats) == ["a", "b", "c", "d"]
+
+
+def test_add_player_rejects_duplicate_player_id() -> None:
+    Room.reset_registry()
+    r = Room.create()
+    p1 = Player(player_id="dup", username="alice")
+    p2 = Player(player_id="dup", username="bob")  # same player_id
+    r.add_player(p1)
+    with pytest.raises(ValueError):
+        r.add_player(p2)

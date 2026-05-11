@@ -9,10 +9,13 @@ export const connectSocket = () => {
 };
 
 function getOrCreatePlayerId() {
-  let pid = localStorage.getItem('mahjong.player_id');
+  // Use sessionStorage (per-tab) so multiple tabs of the same origin act as
+  // separate players. Persists across page refresh within a tab; cleared when
+  // the tab closes (re-opening generates a new id).
+  let pid = sessionStorage.getItem('mahjong.player_id');
   if (!pid) {
     pid = (crypto.randomUUID && crypto.randomUUID()) || `${Date.now()}-${Math.random()}`;
-    localStorage.setItem('mahjong.player_id', pid);
+    sessionStorage.setItem('mahjong.player_id', pid);
   }
   return pid;
 }
