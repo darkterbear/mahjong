@@ -33,3 +33,17 @@ $accent: #FF4B12;
   0%, 100% { filter: drop-shadow(0 0 8px $accent); }
   50%      { filter: drop-shadow(0 0 16px $accent); }
 }
+
+.robbing-kong-banner {
+  position: absolute;
+  top: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #c1440e;
+  color: white;
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-weight: bold;
+  z-index: 7;
+  animation: pulse 1.4s ease-in-out infinite;
+}

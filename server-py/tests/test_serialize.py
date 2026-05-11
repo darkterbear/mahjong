@@ -105,3 +105,35 @@ def test_state_update_wall_position_respects_dice_rotation() -> None:
     nf = s["wall"]["next_front_position"]
     assert nf == [expected_seat, expected_stack, 0], \
         f"expected [{expected_seat}, {expected_stack}, 0], got {nf}"
+
+
+def test_state_update_robbing_kong_window_flag() -> None:
+    h = _setup_playing()
+    p = h.game.players[0]
+    # Seat 0 has a peng of bamboo-2 + holds the 4th in hand → can add-kong.
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    # From seat 2's POV (a non-discarder), the pending claim window should be flagged.
+    s = build_state_update(
+        hand=h, viewer_seat=2, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    assert s["pending_claim_window"] is not None
+    assert s["pending_claim_window"]["is_robbing_kong_window"] is True
+
+
+def test_state_update_normal_claim_window_not_robbing() -> None:
+    h = _setup_playing()
+    p2 = h.game.players[2]
+    while p2.hand[0] < 2:
+        p2.add_tile(0)
+    h.game.players[0].add_tile(0)
+    h.apply_discard(0)
+    s = build_state_update(
+        hand=h, viewer_seat=2, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    assert s["pending_claim_window"] is not None
+    assert s["pending_claim_window"]["is_robbing_kong_window"] is False

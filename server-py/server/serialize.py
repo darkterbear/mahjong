@@ -117,4 +117,5 @@ def _pending_claim_window(hand: Hand, viewer_seat: int) -> Optional[dict]:
         "discarder_seat": hand.game.last_discard_player,
         "tile": hand.game.last_discard,
         "your_options": available,
+        "is_robbing_kong_window": hand.game._pending_gang_add is not None,
     }

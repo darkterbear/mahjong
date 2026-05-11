@@ -51,6 +51,12 @@ export function GamePage() {
         <span>Dealer streak: <strong>{state.dealer_streak}</strong></span>
       </header>
 
+      {state.pending_claim_window?.is_robbing_kong_window && (
+        <div className="robbing-kong-banner">
+          抢杠 — Rob the kong! Click Hu if you can win on this tile.
+        </div>
+      )}
+
       <Scoreboard state={state} />
 
       <PerimeterWall state={state} />
