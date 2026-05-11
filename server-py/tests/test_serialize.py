@@ -96,7 +96,7 @@ def test_state_update_wall_position_respects_dice_rotation() -> None:
     h.roll_dice()
     # Record the dice break for comparison.
     expected_seat = h.dice_result.break_seat
-    expected_stack = (17 - min(h.dice_result.sum, 17))
+    expected_stack = max(0, min(17, 18 - h.dice_result.sum))
     s = build_state_update(
         hand=h, viewer_seat=0, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,

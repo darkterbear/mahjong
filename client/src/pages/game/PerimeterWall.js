@@ -17,13 +17,13 @@ function WallSide({ seat, sideClass, frontPos, backPos, presentSet, canDrawFront
           {Array.from({ length: LAYERS }, (_, layer) => {
             const present = presentSet.has(`${seat},${stack},${layer}`);
             if (!present) return <div key={layer} className="wall-slot empty" />;
-            const isFront = isHighlight(seat, stack, layer, frontPos);
-            const isBack = isHighlight(seat, stack, layer, backPos);
-            const clickable = (isFront && canDrawFront) || (isBack && canDrawBack);
+            const isFront = isHighlight(seat, stack, layer, frontPos) && canDrawFront;
+            const isBack = isHighlight(seat, stack, layer, backPos) && canDrawBack;
+            const clickable = isFront || isBack;
             const cls = isFront
-              ? `wall-slot highlight front${clickable ? ' clickable' : ''}`
+              ? 'wall-slot highlight front clickable'
               : isBack
-              ? `wall-slot highlight back${clickable ? ' clickable' : ''}`
+              ? 'wall-slot highlight back clickable'
               : 'wall-slot';
             return (
               <img
@@ -49,7 +49,6 @@ export function PerimeterWall({ state }) {
   );
   const canDrawFront = state.available_actions.includes('draw_front');
   const canDrawBack = state.available_actions.includes('draw_back');
-  const showBack = canDrawBack;
   const side = (seat) => {
     const offset = (seat - yourSeat + 4) % 4;
     return ['bottom', 'right', 'top', 'left'][offset];
@@ -62,11 +61,11 @@ export function PerimeterWall({ state }) {
           key={seat}
           seat={seat}
           sideClass={side(seat)}
-          frontPos={!showBack ? wall.next_front_position : null}
-          backPos={showBack ? wall.next_back_position : null}
+          frontPos={wall.next_front_position}
+          backPos={wall.next_back_position}
           presentSet={presentSet}
-          canDrawFront={!showBack && canDrawFront}
-          canDrawBack={showBack && canDrawBack}
+          canDrawFront={canDrawFront}
+          canDrawBack={canDrawBack}
         />
       ))}
     </div>

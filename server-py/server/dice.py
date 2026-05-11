@@ -29,13 +29,19 @@ def roll_dice(rng: random.Random, dealer_seat: int = 0) -> DiceResult:
 
 
 def compute_break_position(dealer_seat: int, dice_sum: int) -> tuple[int, int]:
-    """Return (break_seat, break_stack_index).
+    """Return (break_seat, break_stack_index) per the standard rule.
 
-    break_stack_index is clamped to [0, STACKS_PER_SEAT - 1].
+    Counting the dealer as 1 and walking counterclockwise, the dice sum picks
+    which player's wall to break. Then from the right edge of that player's
+    wall (their POV), count `dice_sum` stacks clockwise; the break lands on
+    the counted stack.
     """
     seat = (dealer_seat + dice_sum - 1) % 4
-    offset_clamped = min(dice_sum, STACKS_PER_SEAT - 1)
-    stack = STACKS_PER_SEAT - 1 - offset_clamped
+    # Counting from the right edge (stack index STACKS_PER_SEAT - 1), going
+    # clockwise (decreasing stack index), the k-th stack counted is index
+    # STACKS_PER_SEAT - k. Clamp to keep within the wall.
+    stack = STACKS_PER_SEAT - dice_sum
+    stack = max(0, min(STACKS_PER_SEAT - 1, stack))
     return seat, stack
 
 

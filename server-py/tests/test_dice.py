@@ -25,10 +25,10 @@ def test_roll_dice_records_break() -> None:
 
 
 def test_compute_break_position_simple() -> None:
-    # dice_sum = 5, dealer = 0 → break_seat = 4 % 4 = 0, offset = 5
+    # dice_sum = 5, dealer = 0 → seat = (0+5-1) % 4 = 0; stack = 18-5 = 13.
     seat, stack = compute_break_position(dealer_seat=0, dice_sum=5)
     assert seat == 0
-    assert stack == 17 - 5  # offset stacks in from right edge
+    assert stack == 13
 
 
 def test_compute_break_position_wraps() -> None:
@@ -48,7 +48,6 @@ def test_rotate_wall_for_break_makes_break_first() -> None:
 
 
 def test_compute_break_position_clamped() -> None:
-    # dice_sum = 18 → break_offset is 18 but only 18 stacks exist (0..17)
-    # We clamp to 17, so the broken stack is at the leftmost edge.
+    # dice_sum = 18 → stack = 18 - 18 = 0. The leftmost stack.
     seat, stack = compute_break_position(dealer_seat=0, dice_sum=18)
     assert stack == 0

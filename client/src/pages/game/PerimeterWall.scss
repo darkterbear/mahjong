@@ -82,12 +82,24 @@
 }
 
 .wall-slot.highlight {
-  filter: drop-shadow(0 0 12px #FF4B12);
-  animation: pulse 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px #527aff);
+  animation: pulse-blue 1.4s ease-in-out infinite;
   /* IMPORTANT: do NOT override z-index here — preserve the layer-stack rule. */
+}
+
+@keyframes pulse-blue {
+  0%, 100% { filter: drop-shadow(0 0 8px #527aff); }
+  50%      { filter: drop-shadow(0 0 16px #527aff); }
 }
 
 .wall-slot.clickable {
   pointer-events: auto;
   cursor: pointer;
+}
+
+.perimeter-wall-side.left .wall-slot:nth-child(1) {
+  left: 12px;   /* half-tile shift; appears upward on screen after the 90° rotation */
+}
+.perimeter-wall-side.right .wall-slot:nth-child(1) {
+  left: 12px;   /* half-tile shift; appears downward on screen after the -90° rotation */
 }

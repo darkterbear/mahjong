@@ -544,6 +544,12 @@ class Hand:
                     result.append(AvailableAction.GANG_OPEN)
                 elif a.action_type == ActionType.CHI:
                     result.append(AvailableAction.CHI)
+            # The next player counterclockwise of the discarder may also draw,
+            # which implicitly closes the claim window.
+            if self.game.last_discard_player is not None:
+                next_to_draw = (self.game.last_discard_player + 1) % 4
+                if seat == next_to_draw:
+                    result.append(AvailableAction.DRAW_FRONT)
 
         # Deduplicate while preserving order.
         seen: set[AvailableAction] = set()

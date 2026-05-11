@@ -207,6 +207,15 @@ def test_available_actions_playing_current_player_in_discard() -> None:
     assert AvailableAction.DISCARD in actions
 
 
+def test_next_player_can_draw_front_during_claim_window() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    # Seat 1 (next CCW from seat 0) should see draw_front.
+    assert AvailableAction.DRAW_FRONT in h.available_actions(1)
+
+
 def test_available_actions_in_claim_window() -> None:
     h = _fast_forward_to_playing()
     p2 = h.game.players[2]
