@@ -51,14 +51,6 @@
   transform: translateY(-4px);
   z-index: 5;              /* lift above neighbours */
 }
-.tile.drawn {
-  margin-left: 8px;        /* small visual gap for the freshly-drawn tile */
-}
-
-.gap {
-  width: 8px;
-  display: inline-block;
-}
 
 .meld-row {
   display: inline-flex;

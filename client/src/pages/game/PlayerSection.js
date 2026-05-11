@@ -20,11 +20,12 @@ export function PlayerSection({ state, viewer, other }) {
 }
 
 function SelfSection({ state }) {
-  const { hand, melds, flowers, drawn_tile, seat_wind } = state.you;
+  const { hand, melds, flowers, seat_wind } = state.you;
   const canDiscard = state.available_actions.includes('discard');
   const canDeclareFlower = state.available_actions.includes('declare_flower');
 
   const onTileClick = (tileId, indexInHand) => {
+    console.log('[tile click]', { tileId, isFlower: isFlower(tileId), canDiscard, canDeclareFlower, available: state.available_actions });
     if (canDeclareFlower && isFlower(tileId)) {
       declareFlower(tileId);
       return;
@@ -34,11 +35,7 @@ function SelfSection({ state }) {
     }
   };
 
-  const drawnSet = drawn_tile != null ? [drawn_tile] : [];
-  const handWithoutDrawn = drawn_tile != null
-    ? (() => { const c = [...hand]; const i = c.lastIndexOf(drawn_tile); if (i >= 0) c.splice(i, 1); return c; })()
-    : hand;
-
+  // Render the full hand inline — no special positioning for the just-drawn tile.
   return (
     <div className="player-section self">
       <div className="meta-row">
@@ -46,9 +43,7 @@ function SelfSection({ state }) {
         <span className="flowers">{flowers.map((f, i) => tileImg(f, `f${i}`))}</span>
       </div>
       <div className="hand-row">
-        {handWithoutDrawn.map((t, i) => tileImg(t, `h${i}`, () => onTileClick(t, i)))}
-        {drawnSet.length > 0 && <span className="gap"></span>}
-        {drawnSet.map((t, i) => tileImg(t, `d${i}`, () => onTileClick(t, i), 'drawn'))}
+        {hand.map((t, i) => tileImg(t, `h${i}`, () => onTileClick(t, i)))}
         <span className="meld-row">
           {melds.map((m, i) => (
             <span key={i} className="meld">
@@ -64,6 +59,8 @@ function SelfSection({ state }) {
 function OtherSection({ state, other }) {
   const offset = (other.seat - state.you.seat + 4) % 4;
   const side = ['', 'right', 'top', 'left'][offset];
+  const pending = other.pending_flowers || [];
+  const hiddenCount = Math.max(0, other.hand_count - pending.length);
   return (
     <div className={`player-section other ${side}`}>
       <div className="meta-row">
@@ -72,9 +69,10 @@ function OtherSection({ state, other }) {
         <span className="flowers">{other.flowers.map((f, i) => tileImg(f, `f${i}`))}</span>
       </div>
       <div className="hand-row hidden-hand">
-        {Array.from({ length: other.hand_count }, (_, i) => (
-          <img key={i} className="tile" src={hiddenTileUrl()} alt="" />
+        {Array.from({ length: hiddenCount }, (_, i) => (
+          <img key={`h${i}`} className="tile" src={hiddenTileUrl()} alt="" />
         ))}
+        {pending.map((f, i) => tileImg(f, `pf${i}`))}
         <span className="meld-row">
           {other.melds.map((m, i) => (
             <span key={i} className="meld">

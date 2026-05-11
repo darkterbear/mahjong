@@ -151,6 +151,18 @@ def test_current_turn_seat_in_flower_resolution() -> None:
     assert s["current_turn_seat"] == h.flower_resolution_seat
 
 
+def test_other_player_pending_flowers_exposed() -> None:
+    h = _setup_playing()
+    h.pending_flowers[1].append(35)
+    h.pending_flowers[1].append(38)
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    other_seat_1 = next(o for o in s["others"] if o["seat"] == 1)
+    assert other_seat_1["pending_flowers"] == [35, 38]
+
+
 def test_state_update_exposes_kong_eligible_tiles() -> None:
     h = _setup_playing()
     p = h.game.players[0]

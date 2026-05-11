@@ -1,4 +1,5 @@
 import { hiddenTileUrl } from '../../sharedTiles';
+import { drawFront, drawBack } from '../../api';
 import './PerimeterWall.scss';
 
 const STACKS = 18;
@@ -8,7 +9,7 @@ function isHighlight(seat, stack, layer, target) {
   return target && target[0] === seat && target[1] === stack && target[2] === layer;
 }
 
-function WallSide({ seat, sideClass, frontPos, backPos, presentSet }) {
+function WallSide({ seat, sideClass, frontPos, backPos, presentSet, canDrawFront, canDrawBack }) {
   return (
     <div className={`perimeter-wall-side ${sideClass}`}>
       {Array.from({ length: STACKS }, (_, stack) => (
@@ -16,17 +17,21 @@ function WallSide({ seat, sideClass, frontPos, backPos, presentSet }) {
           {Array.from({ length: LAYERS }, (_, layer) => {
             const present = presentSet.has(`${seat},${stack},${layer}`);
             if (!present) return <div key={layer} className="wall-slot empty" />;
-            const className = isHighlight(seat, stack, layer, frontPos)
-              ? 'wall-slot highlight front'
-              : isHighlight(seat, stack, layer, backPos)
-              ? 'wall-slot highlight back'
+            const isFront = isHighlight(seat, stack, layer, frontPos);
+            const isBack = isHighlight(seat, stack, layer, backPos);
+            const clickable = (isFront && canDrawFront) || (isBack && canDrawBack);
+            const cls = isFront
+              ? `wall-slot highlight front${clickable ? ' clickable' : ''}`
+              : isBack
+              ? `wall-slot highlight back${clickable ? ' clickable' : ''}`
               : 'wall-slot';
             return (
               <img
                 key={layer}
-                className={className}
+                className={cls}
                 src={hiddenTileUrl()}
                 alt=""
+                onClick={clickable ? (isFront ? () => drawFront() : () => drawBack()) : undefined}
               />
             );
           })}
@@ -42,7 +47,9 @@ export function PerimeterWall({ state }) {
   const presentSet = new Set(
     (wall.remaining_positions || []).map((p) => `${p[0]},${p[1]},${p[2]}`)
   );
-  const showBack = state.available_actions.includes('draw_back');
+  const canDrawFront = state.available_actions.includes('draw_front');
+  const canDrawBack = state.available_actions.includes('draw_back');
+  const showBack = canDrawBack;
   const side = (seat) => {
     const offset = (seat - yourSeat + 4) % 4;
     return ['bottom', 'right', 'top', 'left'][offset];
@@ -58,6 +65,8 @@ export function PerimeterWall({ state }) {
           frontPos={!showBack ? wall.next_front_position : null}
           backPos={showBack ? wall.next_back_position : null}
           presentSet={presentSet}
+          canDrawFront={!showBack && canDrawFront}
+          canDrawBack={showBack && canDrawBack}
         />
       ))}
     </div>

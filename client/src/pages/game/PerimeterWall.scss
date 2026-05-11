@@ -69,3 +69,8 @@
   animation: pulse 1.4s ease-in-out infinite;
   z-index: 3;
 }
+
+.wall-slot.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}

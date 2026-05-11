@@ -54,6 +54,7 @@ def build_state_update(
             "seat_wind": _seat_wind_name(s, hand.dealer_seat),
             "username": seats[s],
             "hand_count": int(op.hand.sum()) + len(hand.pending_flowers[s]),
+            "pending_flowers": list(hand.pending_flowers[s]),
             "melds": [_meld_dict(m) for m in op.melds],
             "flowers": list(op.flowers),
             "discards": list(op.discards),
