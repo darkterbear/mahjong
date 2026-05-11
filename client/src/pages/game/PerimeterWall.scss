@@ -98,8 +98,8 @@
 }
 
 .perimeter-wall-side.left .wall-slot:nth-child(1) {
-  left: 12px;   /* half-tile shift; appears upward on screen after the 90° rotation */
+  left: 24px;   /* one-tile shift; appears upward on screen after the 90° rotation */
 }
 .perimeter-wall-side.right .wall-slot:nth-child(1) {
-  left: 12px;   /* half-tile shift; appears downward on screen after the -90° rotation */
+  left: 24px;   /* one-tile shift; appears downward on screen after the -90° rotation */
 }
