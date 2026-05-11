@@ -42,8 +42,11 @@ export function LobbyPage() {
     <h1>Lobby</h1>
     <span id="code">Room code: {code}</span>
     { players.map(p => <p className={p === leader ? 'leader' : ''} key={p}>{p}</p>) }
-    { leader === username && 
-      <button onClick={() => startSession(code)}>Start Game</button>
+    { players.length < 4
+      ? <p className="lobby-status">{players.length}/4 players</p>
+      : leader === username
+        ? <button onClick={() => startSession(code)}>Start Game</button>
+        : <p className="lobby-status">Waiting for {leader} to start…</p>
     }
   </div>
 }
