@@ -72,3 +72,26 @@ class Session:
     def next_hand_dealer_seat(self) -> int:
         """Seat that will be dealer for the *next* hand (post-settlement)."""
         return self.dealer_seat
+
+
+def build_hand_result_from_game(gr) -> HandResult:
+    """Translate subterfuge.types.GameResult into our HandResult."""
+    if gr.winner == -1:
+        return HandResult(
+            winner_seat=None,
+            is_self_draw=False,
+            is_draw=True,
+            payments=[0, 0, 0, 0],
+            breakdown={},
+            total=0,
+            winning_tile=None,
+        )
+    return HandResult(
+        winner_seat=gr.winner,
+        is_self_draw=gr.is_self_draw,
+        is_draw=False,
+        payments=list(gr.payments),
+        breakdown=dict(gr.tai_breakdown),
+        total=gr.tai,
+        winning_tile=gr.winning_tile if gr.winning_tile != -1 else None,
+    )
