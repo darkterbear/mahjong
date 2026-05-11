@@ -10,22 +10,28 @@ Web-based multiplayer Taiwanese 16-tile Mahjong (with full DAN scoring per ~/sub
 
 ## Setup
 
+Requires Python 3.11+, Node 16+ with yarn, and git.
+
 ```bash
 git clone --recurse-submodules git@github.com:darkterbear/mahjong.git
 cd mahjong
-
-# Server
-cd server-py
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ../subterfuge
-pip install -e '.[dev]'
-uvicorn server.app:app --host 0.0.0.0 --port 8080 --reload
-
-# Client (in another terminal)
-cd ../client
-yarn install
-yarn start
+make install
 ```
+
+## Run
+
+```bash
+make dev
+```
+
+Server on http://localhost:8080, client on http://localhost:5000. Ctrl+C kills both.
+
+## Other Make targets
+
+- `make test` — run all server + client tests
+- `make build` — production build of the client
+- `make run` — Python server only (no auto-reload)
+- `make clean` — remove caches and the client build
 
 ## Bumping subterfuge
 
