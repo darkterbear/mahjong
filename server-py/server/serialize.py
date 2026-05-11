@@ -93,11 +93,13 @@ def _wall_payload(hand: Hand) -> dict:
     front_idx = wall._front
     back_idx = wall._back
     rem = max(0, back_idx - front_idx + 1)
-    nf = flat_to_position(front_idx) if 0 <= front_idx < TOTAL_WALL_TILES else None
-    nb = flat_to_position(back_idx) if 0 <= back_idx < TOTAL_WALL_TILES else None
+    offset = hand.wall_rotation_offset
+    physical_front = (front_idx + offset) % TOTAL_WALL_TILES if 0 <= front_idx < TOTAL_WALL_TILES else None
+    physical_back = (back_idx + offset) % TOTAL_WALL_TILES if 0 <= back_idx < TOTAL_WALL_TILES else None
+    nf = flat_to_position(physical_front) if physical_front is not None else None
+    nb = flat_to_position(physical_back) if physical_back is not None else None
     return {
-        "remaining_front": rem,
-        "remaining_back": rem,
+        "remaining": rem,
         "next_front_position": [nf.seat, nf.stack, nf.layer] if nf else None,
         "next_back_position": [nb.seat, nb.stack, nb.layer] if nb else None,
     }

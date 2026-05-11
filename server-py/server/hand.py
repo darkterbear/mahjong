@@ -55,6 +55,7 @@ class Hand:
         self.must_draw_back: bool = False
         self._snapshots: list = []
         self.pending_flowers: list[list[int]] = [[], [], [], []]
+        self.wall_rotation_offset: int = 0
 
     def roll_dice(self) -> DiceResult:
         if self.phase != HandPhase.PRE_DICE:
@@ -64,6 +65,8 @@ class Hand:
 
         # Rotate wall so the break point is at index 0
         seat, stack = compute_break_position(self.dealer_seat, result.sum)
+        from server.wall_view import TILES_PER_SEAT
+        self.wall_rotation_offset = seat * TILES_PER_SEAT + stack * 2
         self.game.wall.tiles = rotate_wall_for_break(
             self.game.wall.tiles, seat, stack,
         )

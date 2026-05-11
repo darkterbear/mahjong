@@ -89,3 +89,19 @@ def test_state_update_other_hand_count_includes_pending_flowers() -> None:
     other_seat_1 = next(o for o in s["others"] if o["seat"] == 1)
     expected = int(h.game.players[1].hand.sum()) + 2  # +2 pending flowers
     assert other_seat_1["hand_count"] == expected
+
+
+def test_state_update_wall_position_respects_dice_rotation() -> None:
+    """After dice rotation, next_front_position should report the physical break point."""
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=42)
+    h.roll_dice()
+    # Record the dice break for comparison.
+    expected_seat = h.dice_result.break_seat
+    expected_stack = (17 - min(h.dice_result.sum, 17))
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    nf = s["wall"]["next_front_position"]
+    assert nf == [expected_seat, expected_stack, 0], \
+        f"expected [{expected_seat}, {expected_stack}, 0], got {nf}"
