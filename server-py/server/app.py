@@ -33,6 +33,5 @@ async def connect(sid: str, environ: dict) -> None:
     pass
 
 
-@sio.event
-async def disconnect(sid: str) -> None:
-    pass
+# Side-effect import: registers all socket event handlers.
+from server import sockets  # noqa: F401, E402
