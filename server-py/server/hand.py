@@ -287,6 +287,33 @@ class Hand:
 
         raise ValueError(f"unknown claim_type: {claim_type}")
 
+    def apply_multi_hu(self, winner_seats: list[int]) -> list:
+        """Score N simultaneous hu winners off the same discard.
+
+        Snapshots before the first hu, then iterates: hu seat A → capture
+        result → restore → hu seat B → capture → ... → final restore + return
+        a list of GameResults. Caller is responsible for aggregating payments.
+        """
+        from subterfuge.types import Action, ActionType
+        if not winner_seats:
+            raise ValueError("no winners")
+        if self.game.phase.name != "CLAIM_WINDOW":
+            raise RuntimeError(f"multi-hu requires open claim window (phase {self.game.phase})")
+        results = []
+        # Take a fresh snapshot for the multi-hu walk.
+        self.snapshot()
+        baseline_idx = len(self._snapshots) - 1
+        for seat in winner_seats:
+            action = Action(ActionType.HU, tile=self.game.last_discard, player=seat)
+            self.game.step(action)
+            results.append(self.game.result)
+            # Restore baseline for the next winner.
+            from server.undo import restore_snapshot
+            restore_snapshot(self, self._snapshots[baseline_idx])
+        # After the loop we're back at baseline; advance to SETTLEMENT.
+        self.phase = HandPhase.SETTLEMENT
+        return results
+
     def declare_concealed_gang(self, tile_id: int) -> None:
         from subterfuge.types import Action, ActionType, Meld, MeldType
         seat = self.game.current_player
