@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useHistory } from 'react-router'
-import { createRoom } from '../api'
+import { createRoom, connectSocket, authSocket } from '../api'
 import './MenuPage.scss'
 
 export function MenuPage() {
@@ -17,6 +17,8 @@ export function MenuPage() {
     const res = await createRoom(username)
     if (res.ok) {
       const { code } = await res.json()
+      connectSocket()
+      authSocket(code)
       history.replace('/lobby', { code, initialPlayers: [username], initialLeader: username, username })
     }
   }

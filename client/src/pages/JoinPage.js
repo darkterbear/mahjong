@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
-import { joinRoom } from '../api'
+import { joinRoom, connectSocket, authSocket } from '../api'
 import './JoinPage.scss'
 
 export function JoinPage() {
@@ -21,6 +21,8 @@ export function JoinPage() {
     const res = await joinRoom(username, code)
     if (res.ok) {
       const { players, leader } = await res.json()
+      connectSocket()
+      authSocket(code)
       history.replace('/lobby', { code, initialPlayers: players, initialLeader: leader, username })
     }
   }
