@@ -258,6 +258,7 @@ async def _settle(room: Room, hand_result) -> None:
     hr = build_hand_result_from_game(gr) if gr else None
     if hr is None:
         return
+    hand.clear_snapshots()
     s.record_settlement(hr)
     await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
         "winner_seat": hr.winner_seat,
@@ -267,4 +268,5 @@ async def _settle(room: Room, hand_result) -> None:
         "total": hr.total,
         "payments": hr.payments,
         "cumulative": s.cumulative_scores,
+        "next_dealer_seat": s.next_hand_dealer_seat(),
     }, room=room.code)

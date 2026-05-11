@@ -67,7 +67,7 @@ export function GamePage() {
       {settlement && (
         <SettlementModal
           settlement={settlement}
-          isNextDealer={state.you.seat === state.dealer_seat /* simplification */}
+          isNextDealer={state.you.seat === settlement.next_dealer_seat}
           onDismiss={() => setSettlement(null)}
         />
       )}
