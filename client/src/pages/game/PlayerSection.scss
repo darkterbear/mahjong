@@ -1,0 +1,83 @@
+.player-section {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &.self {
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  &.other.right {
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+  &.other.top {
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+  }
+  &.other.left {
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+  }
+}
+
+.meta-row {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  align-items: center;
+}
+
+.hand-row {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.tile {
+  width: 48px;
+  height: auto;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.15s;
+}
+.tile:hover {
+  filter: drop-shadow(0 0 8px #527aff);
+  transform: translateY(-4px);
+}
+.tile.drawn {
+  margin-left: 6px;
+}
+
+.gap {
+  width: 8px;
+  display: inline-block;
+}
+
+.meld-row {
+  display: inline-flex;
+  margin-left: 12px;
+  gap: 6px;
+}
+
+.meld {
+  display: inline-flex;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.discards-row {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 240px;
+  margin-top: 4px;
+}
+.discards-row .tile {
+  width: 32px;
+  cursor: default;
+}
