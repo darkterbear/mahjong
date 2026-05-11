@@ -56,6 +56,16 @@ def build_state_update(
     pending = _pending_claim_window(hand, viewer_seat)
     available = [a.value for a in hand.available_actions(viewer_seat)]
 
+    pending_co_hu = None
+    if hand.co_hu_active:
+        pending_co_hu = {
+            "tile": hand.game.last_discard,
+            "discarder_seat": hand.game.last_discard_player,
+            "joined_seats": list(hand.co_hu_joined),
+            "remaining_seats": list(hand.co_hu_remaining),
+            "declined_seats": list(hand.co_hu_declined),
+        }
+
     return {
         "phase": hand.phase.value,
         "round_wind": WIND_NAMES[round_wind_index],
@@ -67,6 +77,7 @@ def build_state_update(
         "wall": wall,
         "available_actions": available,
         "pending_claim_window": pending,
+        "pending_co_hu": pending_co_hu,
         "can_undo": len(hand._snapshots) > 0,
     }
 

@@ -107,7 +107,7 @@ async def on_draw_front(sid: str, data: dict) -> None:
         hand.close_claim_window_no_winner()
     hand.draw_front()
     if hand.phase.value == "SETTLEMENT":
-        await _settle(room, hand_result=None)
+        await _settle_single_or_multi(room)
     else:
         await _broadcast_state(room)
 
@@ -124,7 +124,7 @@ async def on_draw_back(sid: str, data: dict) -> None:
     hand.snapshot()
     hand.draw_back()
     if hand.phase.value == "SETTLEMENT":
-        await _settle(room, hand_result=None)
+        await _settle_single_or_multi(room)
     else:
         await _broadcast_state(room)
 
@@ -161,13 +161,48 @@ async def on_claim(sid: str, data: dict) -> None:
     hand = room.session.current_hand
     if not hand: return
     seat = room.session.seats.index(player.player_id)
-    hand.snapshot()
     if data["action"] == "hu":
+        # Detect if multiple players can hu on this tile.
+        others = []
+        if hand.game.phase.name == "CLAIM_WINDOW":
+            tile = hand.game.last_discard
+            discarder = hand.game.last_discard_player
+            for s in range(4):
+                if s == seat or s == discarder:
+                    continue
+                if hand.can_hu_on_tile(s, tile):
+                    others.append(s)
+        if others:
+            # Co-hu window — pause for other eligible seats to respond.
+            hand.snapshot()
+            hand.start_co_hu_window(seat)
+            await _broadcast_state(room)
+            return
+        # Single-winner — proceed as before.
+        hand.snapshot()
         hand.apply_claim(seat, "hu")
-        await _settle(room, hand_result=None)
+        await _settle_single_or_multi(room)
         return
+    hand.snapshot()
     hand.apply_claim(seat, data["action"], tiles=data.get("tiles"))
     await _broadcast_state(room)
+
+
+@sio.on(ClientEvent.CO_HU_RESPONSE.value)
+async def on_co_hu_response(sid: str, data: dict) -> None:
+    room, player = _ctx(sid)
+    if not room or not room.session: return
+    hand = room.session.current_hand
+    if not hand or not hand.co_hu_active: return
+    seat = room.session.seats.index(player.player_id)
+    if seat not in hand.co_hu_remaining: return
+    accept = bool(data.get("accept", False))
+    hand.snapshot()
+    hand.record_co_hu_response(seat, accept)
+    if hand.co_hu_complete():
+        await _finalize_co_hu(room)
+    else:
+        await _broadcast_state(room)
 
 
 @sio.on(ClientEvent.DECLARE_CONCEALED_GANG.value)
@@ -200,7 +235,7 @@ async def on_self_hu(sid: str, data: dict) -> None:
     if not hand: return
     hand.snapshot()
     hand.declare_self_hu()
-    await _settle(room, hand_result=None)
+    await _settle_single_or_multi(room)
 
 
 @sio.on(ClientEvent.UNDO.value)
@@ -266,7 +301,8 @@ async def _broadcast_state(room: Room) -> None:
             await sio.emit(ServerEvent.STATE_UPDATE.value, payload, to=player.sid)
 
 
-async def _settle(room: Room, hand_result) -> None:
+async def _settle_single_or_multi(room: Room) -> None:
+    """For single-winner Hu / self-Hu / wall-exhaustion. Wraps the GameResult."""
     s = room.session
     hand = s.current_hand
     gr = hand.game.result
@@ -276,12 +312,47 @@ async def _settle(room: Room, hand_result) -> None:
     hand.clear_snapshots()
     s.record_settlement(hr)
     await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
-        "winner_seat": hr.winner_seat,
-        "winning_tile": hr.winning_tile,
+        "winners": [
+            {
+                "seat": hr.winner_seat,
+                "winning_tile": hr.winning_tile,
+                "breakdown": hr.breakdown,
+                "total": hr.total,
+            }
+        ] if hr.winner_seat is not None else [],
+        "is_draw": hr.is_draw,
         "source": "self" if hr.is_self_draw else "discard",
-        "breakdown": hr.breakdown,
-        "total": hr.total,
         "payments": hr.payments,
+        "cumulative": s.cumulative_scores,
+        "next_dealer_seat": s.next_hand_dealer_seat(),
+    }, room=room.code)
+
+
+async def _finalize_co_hu(room: Room) -> None:
+    """Run apply_multi_hu and emit a multi-winner hand_settlement."""
+    s = room.session
+    hand = s.current_hand
+    results_gr = hand.finalize_co_hu()
+    hand.clear_snapshots()
+    hr_list = [build_hand_result_from_game(gr) for gr in results_gr]
+    s.record_multi_settlement(hr_list)
+    agg = [0, 0, 0, 0]
+    for hr in hr_list:
+        for i in range(4):
+            agg[i] += hr.payments[i]
+    await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
+        "winners": [
+            {
+                "seat": hr.winner_seat,
+                "winning_tile": hr.winning_tile,
+                "breakdown": hr.breakdown,
+                "total": hr.total,
+            }
+            for hr in hr_list
+        ],
+        "is_draw": False,
+        "source": "discard",
+        "payments": agg,
         "cumulative": s.cumulative_scores,
         "next_dealer_seat": s.next_hand_dealer_seat(),
     }, room=room.code)

@@ -26,6 +26,7 @@ class ClientEvent(str, Enum):
     DECLARE_SELF_HU = "declare_self_hu"
     UNDO = "undo"
     NEXT_HAND = "next_hand"
+    CO_HU_RESPONSE = "co_hu_response"
 
 
 class ServerEvent(str, Enum):
@@ -51,6 +52,7 @@ class AvailableAction(str, Enum):
     HU = "hu"
     UNDO = "undo"
     NEXT_HAND = "next_hand"
+    CO_HU_PASS = "co_hu_pass"
 
 
 @dataclass

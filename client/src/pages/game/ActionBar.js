@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   rollDice, drawFront, drawBack, claim,
   declareConcealedGang, declareAddedGang, declareSelfHu, undo, nextHand,
+  socket,
 } from '../../api';
 import { tileImageUrl } from '../../sharedTiles';
 import './ActionBar.scss';
@@ -17,6 +18,7 @@ const LABELS = {
   declare_concealed_gang: 'Concealed Kong',
   declare_added_gang: 'Add Kong',
   next_hand: 'Next Hand',
+  co_hu_pass: 'Pass',
 };
 
 export function ActionBar({ state }) {
@@ -33,7 +35,13 @@ export function ActionBar({ state }) {
       case 'roll_dice': return rollDice();
       case 'draw_front': return drawFront();
       case 'draw_back': return drawBack();
-      case 'hu': return showSelfHu ? declareSelfHu() : claim('hu');
+      case 'hu': {
+        if (state.pending_co_hu && state.pending_co_hu.remaining_seats.includes(state.you.seat)) {
+          return socket.emit('co_hu_response', { accept: true });
+        }
+        return showSelfHu ? declareSelfHu() : claim('hu');
+      }
+      case 'co_hu_pass': return socket.emit('co_hu_response', { accept: false });
       case 'peng': return claim('peng');
       case 'chi': return claim('chi');  // chi disambiguation deferred
       case 'gang_open': return claim('gang_open');

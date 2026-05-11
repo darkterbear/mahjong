@@ -285,3 +285,52 @@ def test_available_actions_in_claim_window() -> None:
     h.apply_discard(0)
     actions_2 = h.available_actions(2)
     assert AvailableAction.PENG in actions_2
+
+
+def test_can_hu_on_tile_basic() -> None:
+    h = _fast_forward_to_playing()
+    import numpy as np
+    p = h.game.players[1]
+    p.hand = np.zeros(34, dtype=np.int8)
+    for tid, count in [(1, 3), (2, 3), (3, 3), (4, 3), (5, 3), (0, 1)]:
+        for _ in range(count):
+            p.add_tile(tid)
+    assert h.can_hu_on_tile(1, 0) is True
+    assert h.can_hu_on_tile(1, 9) is False
+
+
+def test_start_co_hu_window_finds_eligible_others() -> None:
+    h = _fast_forward_to_playing()
+    import numpy as np
+    for seat in (1, 2):
+        p = h.game.players[seat]
+        p.hand = np.zeros(34, dtype=np.int8)
+        for tid, count in [(1, 3), (2, 3), (3, 3), (4, 3), (5, 3), (0, 1)]:
+            for _ in range(count):
+                p.add_tile(tid)
+    h.game.players[0].add_tile(0)
+    h.apply_discard(0)
+    h.start_co_hu_window(initial_seat=1)
+    assert h.co_hu_active is True
+    assert 1 in h.co_hu_joined
+    assert 2 in h.co_hu_remaining
+
+
+def test_record_co_hu_response_completes() -> None:
+    h = _fast_forward_to_playing()
+    import numpy as np
+    for seat in (1, 2):
+        p = h.game.players[seat]
+        p.hand = np.zeros(34, dtype=np.int8)
+        for tid, count in [(1, 3), (2, 3), (3, 3), (4, 3), (5, 3), (0, 1)]:
+            for _ in range(count):
+                p.add_tile(tid)
+    h.game.players[0].add_tile(0)
+    h.apply_discard(0)
+    h.start_co_hu_window(initial_seat=1)
+    assert not h.co_hu_complete()
+    h.record_co_hu_response(2, accept=True)
+    assert h.co_hu_complete()
+    results = h.finalize_co_hu()
+    assert len(results) == 2
+    assert h.co_hu_active is False

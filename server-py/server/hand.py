@@ -56,6 +56,10 @@ class Hand:
         self._snapshots: list = []
         self.pending_flowers: list[list[int]] = [[], [], [], []]
         self.wall_rotation_offset: int = 0
+        self.co_hu_joined: list[int] = []
+        self.co_hu_remaining: list[int] = []
+        self.co_hu_declined: list[int] = []
+        self.co_hu_active: bool = False
 
     def roll_dice(self) -> DiceResult:
         if self.phase != HandPhase.PRE_DICE:
@@ -329,6 +333,60 @@ class Hand:
         self.phase = HandPhase.SETTLEMENT
         return results
 
+    def can_hu_on_tile(self, seat: int, tile_id: int) -> bool:
+        """Check if `seat` could win by adding `tile_id` to their hand."""
+        from subterfuge.engine.hand_eval import is_winning_hand
+        p = self.game.players[seat]
+        test_hand = p.hand.copy()
+        test_hand[tile_id] += 1
+        return is_winning_hand(test_hand, len(p.melds))
+
+    def start_co_hu_window(self, initial_seat: int) -> None:
+        """Enter the co-hu window. The first hu claim has just arrived from initial_seat.
+
+        Computes which other non-discarder seats can ALSO hu on the pending tile
+        and pauses settlement until each responds.
+        """
+        if self.game.phase.name != "CLAIM_WINDOW":
+            raise RuntimeError(f"co-hu requires open claim window (phase {self.game.phase})")
+        tile = self.game.last_discard
+        discarder = self.game.last_discard_player
+        others = []
+        for seat in range(4):
+            if seat == initial_seat or seat == discarder:
+                continue
+            if self.can_hu_on_tile(seat, tile):
+                others.append(seat)
+        self.co_hu_joined = [initial_seat]
+        self.co_hu_remaining = others
+        self.co_hu_declined = []
+        self.co_hu_active = True
+
+    def record_co_hu_response(self, seat: int, accept: bool) -> None:
+        if not self.co_hu_active:
+            raise RuntimeError("no co-hu window open")
+        if seat not in self.co_hu_remaining:
+            raise ValueError(f"seat {seat} is not in remaining co-hu responders")
+        self.co_hu_remaining.remove(seat)
+        if accept:
+            self.co_hu_joined.append(seat)
+        else:
+            self.co_hu_declined.append(seat)
+
+    def co_hu_complete(self) -> bool:
+        return self.co_hu_active and not self.co_hu_remaining
+
+    def finalize_co_hu(self) -> list:
+        """Run apply_multi_hu with all joined winners; return the list of GameResults."""
+        if not self.co_hu_complete():
+            raise RuntimeError("co-hu not yet complete")
+        winners = list(self.co_hu_joined)
+        self.co_hu_active = False
+        self.co_hu_joined = []
+        self.co_hu_remaining = []
+        self.co_hu_declined = []
+        return self.apply_multi_hu(winners)
+
     def declare_concealed_gang(self, tile_id: int) -> None:
         from subterfuge.types import Action, ActionType, Meld, MeldType
         seat = self.game.current_player
@@ -403,6 +461,12 @@ class Hand:
         self._snapshots.clear()
 
     def available_actions(self, seat: int) -> list[AvailableAction]:
+        # CO_HU window: only eligible seats see Hu/Pass; others see nothing.
+        if self.co_hu_active:
+            if seat in self.co_hu_remaining:
+                return [AvailableAction.HU, AvailableAction.CO_HU_PASS]
+            return []
+
         if self.phase == HandPhase.PRE_DICE:
             return [AvailableAction.ROLL_DICE] if seat == self.dealer_seat else []
 

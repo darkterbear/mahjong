@@ -57,6 +57,12 @@ export function GamePage() {
         </div>
       )}
 
+      {state.pending_co_hu && state.pending_co_hu.remaining_seats.includes(state.you.seat) && (
+        <div className="co-hu-banner">
+          多家胡 — Co-Hu! Another player won on this tile. Click Hu to also win, or Pass.
+        </div>
+      )}
+
       <Scoreboard state={state} />
 
       <PerimeterWall state={state} />
