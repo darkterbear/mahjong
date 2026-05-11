@@ -80,3 +80,16 @@ def test_record_settlement_draw_increments_streak() -> None:
     ))
     assert s.dealer_streak == 1
     assert s.dealer_seat == 0
+
+
+def test_record_multi_settlement_aggregates() -> None:
+    s = Session(player_ids=["a","b","c","d"], seed=0)
+    s.start_new_hand()
+    r1 = HandResult(winner_seat=1, is_self_draw=False, is_draw=False,
+                    payments=[-5, 5, 0, 0], breakdown={}, total=5)
+    r2 = HandResult(winner_seat=2, is_self_draw=False, is_draw=False,
+                    payments=[-3, 0, 3, 0], breakdown={}, total=3)
+    s.record_multi_settlement([r1, r2])
+    assert s.cumulative_scores == [-8, 5, 3, 0]
+    # Two non-dealer wins → dealer rotates once (rotation triggered by FIRST win).
+    assert s.dealer_seat == 1

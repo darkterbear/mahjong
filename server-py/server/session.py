@@ -69,6 +69,33 @@ class Session:
 
         self.current_hand = None
 
+    def record_multi_settlement(self, results: list[HandResult]) -> None:
+        """Record several simultaneous hu winners off the same discard.
+
+        Cumulative scores accept all payments. Dealer rotation rule fires
+        once based on whether any winner is the dealer.
+        """
+        agg_payments = [0, 0, 0, 0]
+        for r in results:
+            for i in range(4):
+                agg_payments[i] += r.payments[i]
+        for i in range(4):
+            self.cumulative_scores[i] += agg_payments[i]
+        for r in results:
+            self.hand_history.append(r)
+
+        dealer_won = any(r.winner_seat == self.dealer_seat for r in results)
+        if dealer_won:
+            self.dealer_streak += 1
+        else:
+            self.dealer_seat = (self.dealer_seat + 1) % 4
+            self.dealer_streak = 0
+            self.dealer_rotations_this_round += 1
+            if self.dealer_rotations_this_round == 4:
+                self.round_wind_index = (self.round_wind_index + 1) % 4
+                self.dealer_rotations_this_round = 0
+        self.current_hand = None
+
     def next_hand_dealer_seat(self) -> int:
         """Seat that will be dealer for the *next* hand (post-settlement)."""
         return self.dealer_seat
