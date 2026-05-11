@@ -37,15 +37,15 @@
 /* Each stack has 2 layers; overlap them so they look like one thick stack. */
 .stack {
   position: relative;
-  width: 24px;
-  height: 36px;          /* tile height + a small offset for the bottom layer */
-  margin: 0 -2px;        /* lateral overlap to suggest tightly-adjacent tiles */
+  width: 48px;
+  height: 72px;          /* tile height + a small offset for the bottom layer */
+  margin: 0 -4px;        /* lateral overlap to suggest tightly-adjacent tiles */
 }
 
 .wall-slot {
   position: absolute;
-  width: 24px;
-  height: 32px;
+  width: 48px;
+  height: 64px;
   display: block;
   left: 0;
   top: 0;
