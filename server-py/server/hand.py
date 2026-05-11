@@ -346,6 +346,20 @@ class Hand:
         if was_pending_add and self.game.phase == TurnPhase.DRAW:
             self.must_draw_back = True
 
+    def snapshot(self) -> None:
+        from server.undo import take_snapshot
+        self._snapshots.append(take_snapshot(self))
+
+    def undo(self) -> None:
+        from server.undo import restore_snapshot
+        if not self._snapshots:
+            raise RuntimeError("no snapshots to undo")
+        snap = self._snapshots.pop()
+        restore_snapshot(self, snap)
+
+    def clear_snapshots(self) -> None:
+        self._snapshots.clear()
+
     def available_actions(self, seat: int) -> list[AvailableAction]:
         if self.phase == HandPhase.PRE_DICE:
             return [AvailableAction.ROLL_DICE] if seat == self.dealer_seat else []
