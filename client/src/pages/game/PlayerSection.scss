@@ -52,6 +52,22 @@
   z-index: 5;              /* lift above neighbours */
 }
 
+/* Flower-tile placeholder (until SVG assets land). */
+.flower-tile {
+  width: 56px;
+  height: 76px;
+  background: #fff7e6;
+  color: #b85c1a;
+  border: 1px solid #d8a060;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  box-sizing: border-box;
+}
+
 .meld-row {
   display: inline-flex;
   margin-left: 12px;
