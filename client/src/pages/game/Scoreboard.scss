@@ -1,0 +1,22 @@
+.scoreboard {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 200px;
+  background: rgba(0,0,0,0.4);
+  padding: 12px;
+  border-radius: 8px;
+  z-index: 5;
+  font-size: 13px;
+
+  h3 { margin: 0 0 8px; font-size: 14px; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .score.pos { color: #5dd57a; }
+  .score.neg { color: #ff8888; }
+}
