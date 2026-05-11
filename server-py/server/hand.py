@@ -242,7 +242,19 @@ class Hand:
 
         if claim_type == "hu":
             action = Action(ActionType.HU, tile=tile, player=seat)
-            self.game.step(action)
+            if self.game._pending_gang_add is not None:
+                # Robbing-the-kong: route through resolve_claim_window so
+                # subterfuge sets _is_robbing_kong=True and clears
+                # _pending_gang_add, awarding 抢杠 in DAN scoring.
+                claims = {
+                    i: Action(ActionType.PASS, player=i)
+                    for i in range(4)
+                    if i != self.game.last_discard_player
+                }
+                claims[seat] = action
+                self.game.resolve_claim_window(claims)
+            else:
+                self.game.step(action)
             self.phase = HandPhase.SETTLEMENT
             return
 
