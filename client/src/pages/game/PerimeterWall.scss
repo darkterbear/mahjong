@@ -1,0 +1,47 @@
+.perimeter-wall {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.perimeter-wall-side {
+  position: absolute;
+  display: flex;
+  gap: 2px;
+
+  &.bottom {
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+  }
+  &.top {
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+    flex-direction: row;
+  }
+  &.left {
+    left: 18%;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    flex-direction: row;
+  }
+  &.right {
+    right: 18%;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    flex-direction: row;
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.wall-tile {
+  width: 24px;
+  height: 32px;
+  display: block;
+}
