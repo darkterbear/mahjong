@@ -195,3 +195,41 @@ def test_apply_chi_claim_only_for_left_neighbor() -> None:
 def test_apply_hu_claim_ends_hand() -> None:
     # Stub — covered comprehensively in scoring tests (Phase 5).
     pass
+
+
+def test_declare_concealed_gang() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    # Force 4 of bamboo-1 in seat 0's hand.
+    while p.hand[0] < 4:
+        p.add_tile(0)
+    h.declare_concealed_gang(0)
+    assert any(m.meld_type == MeldType.GANG_CONCEALED for m in p.melds)
+    assert h.game.phase == TurnPhase.DRAW
+    assert h.must_draw_back is True
+
+
+def test_declare_added_gang_opens_robbing_window() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    # Seat 0 already has a peng of bamboo-2 + holds a 4th tile in hand.
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    assert h.game.phase == TurnPhase.CLAIM_WINDOW
+    assert h.game._pending_gang_add is not None
+
+
+def test_added_gang_completes_when_window_closes() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    h.close_claim_window_no_winner()
+    assert h.game._pending_gang_add is None
+    # The PENG meld should now be a GANG_ADD.
+    assert any(m.meld_type == MeldType.GANG_ADD for m in p.melds)
+    assert h.must_draw_back is True

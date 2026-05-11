@@ -287,6 +287,45 @@ class Hand:
 
         raise ValueError(f"unknown claim_type: {claim_type}")
 
+    def declare_concealed_gang(self, tile_id: int) -> None:
+        from subterfuge.types import Action, ActionType, Meld, MeldType
+        seat = self.game.current_player
+        meld = Meld(meld_type=MeldType.GANG_CONCEALED, tiles=[tile_id] * 4)
+        action = Action(ActionType.GANG_SELF, tile=tile_id, player=seat, meld=meld)
+        self.game.step(action)
+        self.must_draw_back = True
+
+    def declare_added_gang(self, tile_id: int) -> None:
+        from subterfuge.types import Action, ActionType, Meld, MeldType
+        seat = self.game.current_player
+        # Find the source_player of the existing peng (for meld provenance).
+        src = next(
+            m.source_player for m in self.game.players[seat].melds
+            if m.meld_type == MeldType.PENG and m.tiles[0] == tile_id
+        )
+        meld = Meld(
+            meld_type=MeldType.GANG_ADD,
+            tiles=[tile_id] * 4,
+            source_player=src,
+            source_tile=tile_id,
+        )
+        action = Action(ActionType.GANG_ADD, tile=tile_id, player=seat, meld=meld)
+        self.game.step(action)
+        # NOTE: subterfuge's _handle_gang_add stages last_discard for the robbing
+        # window. must_draw_back is set later by close_claim_window_no_winner via
+        # _complete_gang_add inside subterfuge.
+
+    def declare_self_hu(self) -> None:
+        from subterfuge.types import Action, ActionType
+        seat = self.game.current_player
+        action = Action(
+            ActionType.HU,
+            tile=self.game.players[seat]._just_drew or -1,
+            player=seat,
+        )
+        self.game.step(action)
+        self.phase = HandPhase.SETTLEMENT
+
     def close_claim_window_no_winner(self) -> None:
         """Close the claim window with no winning claim; advance to next player's draw.
 
@@ -296,6 +335,7 @@ class Hand:
         if self.game.phase != TurnPhase.CLAIM_WINDOW:
             raise RuntimeError(f"no claim window open (phase {self.game.phase})")
         from subterfuge.types import Action, ActionType
+        was_pending_add = self.game._pending_gang_add is not None
         # Build an all-pass claim dict to delegate resolution to subterfuge.
         claims = {
             i: Action(ActionType.PASS, player=i)
@@ -303,3 +343,5 @@ class Hand:
             if i != self.game.last_discard_player
         }
         self.game.resolve_claim_window(claims)
+        if was_pending_add and self.game.phase == TurnPhase.DRAW:
+            self.must_draw_back = True
