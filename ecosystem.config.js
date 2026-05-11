@@ -1,31 +1,22 @@
-/* PM2 CONFIGURATION FILE */
-// Options reference: https://pm2.io/doc/en/runtime/reference/ecosystem-file/
 module.exports = {
   apps: [
     {
-      name: 'mahjong-api',
-      script: 'build/app.js',
-      cwd: 'server/',
+      name: 'mahjong-server',
+      cwd: './server-py',
+      script: '.venv/bin/uvicorn',
+      args: 'server.app:app --host 0.0.0.0 --port 8080',
       env: {
-        NODE_ENV: 'production',
-        PORT: 3004
+        PORT: 8080,
       },
-      instances: 1,
-      autorestart: true,
-      watch: false,
     },
     {
       name: 'mahjong-client',
-      script: 'serve',
-      cwd: 'client/',
+      cwd: './client',
+      script: 'yarn',
+      args: 'start',
       env: {
-        PM2_SERVE_PATH: 'build/',
-        PM2_SERVE_PORT: 5004,
-        PM2_SERVE_SPA: 'true'
+        PORT: 5000,
       },
-      instances: 1,
-      autorestart: true,
-      watch: false,
     },
   ],
 };
