@@ -1,6 +1,7 @@
 """Socket.io event handlers for in-game actions."""
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Optional
 
@@ -76,12 +77,15 @@ async def on_roll_dice(sid: str, data: dict) -> None:
         "break_seat": dice.break_seat, "break_offset": dice.break_offset,
     }, room=room.code)
     hand.deal_initial_hands()
-    # Stream dealing animation events.
+    # Stream dealing animation events with a small delay so the deal feels animated.
+    DEAL_STEP_DELAY = 0.2  # seconds between batches of 4 tiles
     order = [(hand.dealer_seat + i) % 4 for i in range(4)]
     for _ in range(4):
         for s in order:
             await sio.emit(ServerEvent.DEALING_STEP.value, {"seat": s, "count": 4}, room=room.code)
+            await asyncio.sleep(DEAL_STEP_DELAY)
     await sio.emit(ServerEvent.DEALING_STEP.value, {"seat": hand.dealer_seat, "count": 1}, room=room.code)
+    await asyncio.sleep(DEAL_STEP_DELAY)
     await _broadcast_state(room)
 
 
