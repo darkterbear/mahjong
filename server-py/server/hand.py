@@ -97,6 +97,7 @@ class Hand:
         self._place_initial_tile(self.dealer_seat, tile)
 
         self.phase = HandPhase.FLOWER_RESOLUTION
+        self._begin_flower_resolution()
 
     def _place_initial_tile(self, seat: int, tile: int) -> None:
         """Place a freshly-drawn initial tile into a seat's hand or pending flowers.
@@ -110,3 +111,81 @@ class Hand:
             self.pending_flowers[seat].append(tile)
         else:
             self.game.players[seat].add_tile(tile)
+
+    # ---- Flower resolution ----------------------------------------------------
+
+    def _begin_flower_resolution(self) -> None:
+        self.flower_resolution_seat = self.dealer_seat
+        self.must_draw_back = False
+        self._advance_flower_resolution_seat_if_clean()
+
+    def declare_flower(self, tile_id: int) -> None:
+        if self.phase not in (HandPhase.FLOWER_RESOLUTION, HandPhase.PLAYING):
+            raise RuntimeError(f"declare_flower not allowed in phase {self.phase}")
+        if not is_flower(tile_id):
+            raise ValueError(f"tile {tile_id} is not a flower")
+        seat = self._active_flower_seat()
+        if tile_id not in self.pending_flowers[seat]:
+            raise ValueError(f"seat {seat} does not hold flower {tile_id}")
+        self.pending_flowers[seat].remove(tile_id)
+        self.game.players[seat].add_flower(tile_id)
+        self.must_draw_back = True
+
+    def _active_flower_seat(self) -> int:
+        if self.phase == HandPhase.FLOWER_RESOLUTION:
+            return self.flower_resolution_seat
+        return self.game.current_player
+
+    def draw_back(self) -> None:
+        if not self.must_draw_back:
+            raise RuntimeError("no replacement draw owed")
+        tile = self.game.wall.draw_replacement()
+        if tile is None:
+            # Wall exhausted on a replacement — hand ends as draw.
+            self.phase = HandPhase.SETTLEMENT
+            self.game.phase = TurnPhase.GAME_OVER
+            self.must_draw_back = False
+            return
+        seat = self._active_flower_seat()
+        if is_flower(tile):
+            # Replacement was itself a flower — pending list, will need another draw_back.
+            self.pending_flowers[seat].append(tile)
+            # must_draw_back stays True implicitly only if the player declares
+            # this newly-arrived flower next. Spec: each draw_back resolves one
+            # owed replacement; subsequent flower handling is its own declare→draw_back cycle.
+            self.must_draw_back = False
+        else:
+            self.game.players[seat].add_tile(tile)
+            # Flag for 杠上 if we're in PLAYING (replacement after gang/flower).
+            if self.phase == HandPhase.PLAYING:
+                self.game._replacement_draw = True
+            self.must_draw_back = False
+        if self.phase == HandPhase.FLOWER_RESOLUTION:
+            self._advance_flower_resolution_seat_if_clean()
+            self._maybe_finish_flower_resolution()
+
+    def _advance_flower_resolution_seat_if_clean(self) -> None:
+        """If the active flower-resolution seat has no pending flowers, advance to next seat."""
+        while True:
+            if self._has_flower_in_hand(self.flower_resolution_seat):
+                return
+            next_seat = (self.flower_resolution_seat + 1) % 4
+            if next_seat == self.dealer_seat:
+                # Cycled all 4 — done.
+                return
+            self.flower_resolution_seat = next_seat
+
+    def _has_flower_in_hand(self, seat: int) -> bool:
+        return len(self.pending_flowers[seat]) > 0
+
+    def _maybe_finish_flower_resolution(self) -> None:
+        if self.phase != HandPhase.FLOWER_RESOLUTION:
+            return
+        if any(self._has_flower_in_hand(s) for s in range(4)):
+            return
+        # All clean → enter PLAYING.
+        self.phase = HandPhase.PLAYING
+        self.game.phase = TurnPhase.DISCARD  # dealer already drew their 17th
+        self.game.current_player = self.dealer_seat
+        self.game._is_first_draw = True
+        self.game._replacement_draw = False
