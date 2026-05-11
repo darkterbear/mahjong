@@ -54,6 +54,7 @@ class Hand:
         self.flower_resolution_seat: int = 0
         self.must_draw_back: bool = False
         self._snapshots: list = []
+        self.pending_flowers: list[list[int]] = [[], [], [], []]
 
     def roll_dice(self) -> DiceResult:
         if self.phase != HandPhase.PRE_DICE:
@@ -98,9 +99,14 @@ class Hand:
         self.phase = HandPhase.FLOWER_RESOLUTION
 
     def _place_initial_tile(self, seat: int, tile: int) -> None:
-        """Place a freshly-drawn initial tile into a seat's hand.
+        """Place a freshly-drawn initial tile into a seat's hand or pending flowers.
 
-        IMPORTANT: per spec we DO NOT replace flowers automatically. The
-        flower stays in the player's hand until they click DECLARE_FLOWER.
+        Per spec, flowers do NOT auto-replace at deal time — they sit in the
+        player's pending-flowers list (visible as "in hand" on the client UI)
+        until the player explicitly declares each one in FLOWER_RESOLUTION.
+        Subterfuge's Player.hand only stores non-flower tile IDs (0..33).
         """
-        self.game.players[seat].add_tile(tile)
+        if is_flower(tile):
+            self.pending_flowers[seat].append(tile)
+        else:
+            self.game.players[seat].add_tile(tile)

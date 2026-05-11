@@ -31,7 +31,10 @@ def test_finish_dealing_advances_to_flower_resolution() -> None:
     hand.roll_dice()
     hand.deal_initial_hands()
     assert hand.phase == HandPhase.FLOWER_RESOLUTION
-    # Each non-dealer has 16 tiles; dealer has 17.
-    counts = [hand.game.players[s].hand_count for s in range(4)]
+    # Each non-dealer received 16 tiles (some may be pending flowers); dealer received 17.
+    counts = [
+        hand.game.players[s].hand_count + len(hand.pending_flowers[s])
+        for s in range(4)
+    ]
     assert sum(counts) == 16 * 3 + 17
     assert counts[hand.dealer_seat] == 17
