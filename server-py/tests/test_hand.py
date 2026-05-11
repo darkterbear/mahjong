@@ -1,7 +1,7 @@
 import pytest
 
 from server.hand import Hand
-from server.protocol import HandPhase
+from server.protocol import HandPhase, AvailableAction
 from subterfuge.tiles import FLOWER_START
 from subterfuge.types import TurnPhase, MeldType
 from server.protocol import HandPhase as _HP
@@ -233,3 +233,55 @@ def test_added_gang_completes_when_window_closes() -> None:
     # The PENG meld should now be a GANG_ADD.
     assert any(m.meld_type == MeldType.GANG_ADD for m in p.melds)
     assert h.must_draw_back is True
+
+
+def test_available_actions_pre_dice() -> None:
+    h = Hand(dealer_seat=2, round_wind_index=0, dealer_streak=0, seed=0)
+    assert h.available_actions(2) == [AvailableAction.ROLL_DICE]
+    assert h.available_actions(0) == []
+
+
+def test_available_actions_flower_resolution() -> None:
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=1)
+    h.roll_dice()
+    h.deal_initial_hands()
+    if not h._has_flower_in_hand(0):
+        # Inject a flower so seat 0 has work to do.
+        h.pending_flowers[0].append(34)
+    h.flower_resolution_seat = 0
+    h.must_draw_back = False
+    actions = h.available_actions(0)
+    assert AvailableAction.DECLARE_FLOWER in actions
+    h.must_draw_back = True
+    actions = h.available_actions(0)
+    assert AvailableAction.DRAW_BACK in actions
+
+
+def test_available_actions_playing_current_player_in_draw() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    tile = next(t for t in range(34) if p.hand[t] > 0)
+    h.apply_discard(tile)
+    h.close_claim_window_no_winner()
+    # Seat 1 is now current player in DRAW.
+    actions = h.available_actions(1)
+    assert AvailableAction.DRAW_FRONT in actions
+
+
+def test_available_actions_playing_current_player_in_discard() -> None:
+    h = _fast_forward_to_playing()
+    actions = h.available_actions(0)
+    # Has many discard options + maybe self-actions.
+    # Just check that DISCARD is exposed (the action bar lights up tiles).
+    assert AvailableAction.DISCARD in actions
+
+
+def test_available_actions_in_claim_window() -> None:
+    h = _fast_forward_to_playing()
+    p2 = h.game.players[2]
+    while p2.hand[0] < 2:
+        p2.add_tile(0)
+    h.game.players[0].add_tile(0)
+    h.apply_discard(0)
+    actions_2 = h.available_actions(2)
+    assert AvailableAction.PENG in actions_2

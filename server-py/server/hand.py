@@ -10,7 +10,7 @@ from subterfuge.tiles import is_flower
 from subterfuge.types import Wind, TurnPhase
 
 from server.dice import roll_dice, rotate_wall_for_break, compute_break_position
-from server.protocol import DiceResult, HandPhase
+from server.protocol import DiceResult, HandPhase, AvailableAction
 
 INITIAL_HAND_SIZE = 16
 DEAL_BATCH = 4
@@ -345,3 +345,70 @@ class Hand:
         self.game.resolve_claim_window(claims)
         if was_pending_add and self.game.phase == TurnPhase.DRAW:
             self.must_draw_back = True
+
+    def available_actions(self, seat: int) -> list[AvailableAction]:
+        if self.phase == HandPhase.PRE_DICE:
+            return [AvailableAction.ROLL_DICE] if seat == self.dealer_seat else []
+
+        if self.phase == HandPhase.DEALING:
+            return []
+
+        if self.phase == HandPhase.FLOWER_RESOLUTION:
+            if seat != self.flower_resolution_seat:
+                return []
+            if self.must_draw_back:
+                return [AvailableAction.DRAW_BACK]
+            if self._has_flower_in_hand(seat):
+                return [AvailableAction.DECLARE_FLOWER]
+            return []
+
+        if self.phase == HandPhase.SETTLEMENT:
+            # next-hand control handled at session level; return [] here.
+            return []
+
+        # PLAYING
+        result: list[AvailableAction] = []
+        is_current = (seat == self.game.current_player)
+
+        if self.game.phase == TurnPhase.DRAW and is_current:
+            result.append(AvailableAction.DRAW_BACK if self.must_draw_back
+                          else AvailableAction.DRAW_FRONT)
+
+        if self.game.phase == TurnPhase.DISCARD and is_current:
+            # Player must declare flower if they hold one.
+            if self._has_flower_in_hand(seat):
+                result.append(AvailableAction.DECLARE_FLOWER)
+            if self.must_draw_back:
+                result.append(AvailableAction.DRAW_BACK)
+            else:
+                result.append(AvailableAction.DISCARD)
+                p = self.game.players[seat]
+                if p.can_gang_self():
+                    result.append(AvailableAction.DECLARE_CONCEALED_GANG)
+                if p.can_gang_add():
+                    result.append(AvailableAction.DECLARE_ADDED_GANG)
+                from subterfuge.engine.hand_eval import is_winning_hand
+                if is_winning_hand(p.hand, len(p.melds)):
+                    result.append(AvailableAction.HU)
+
+        if self.game.phase == TurnPhase.CLAIM_WINDOW and seat != self.game.last_discard_player:
+            from subterfuge.types import ActionType
+            valid = self.game.get_valid_actions(seat)
+            for a in valid:
+                if a.action_type == ActionType.HU:
+                    result.append(AvailableAction.HU)
+                elif a.action_type == ActionType.PENG:
+                    result.append(AvailableAction.PENG)
+                elif a.action_type == ActionType.GANG_CALL:
+                    result.append(AvailableAction.GANG_OPEN)
+                elif a.action_type == ActionType.CHI:
+                    result.append(AvailableAction.CHI)
+
+        # Deduplicate while preserving order.
+        seen: set[AvailableAction] = set()
+        deduped = []
+        for a in result:
+            if a not in seen:
+                seen.add(a)
+                deduped.append(a)
+        return deduped
