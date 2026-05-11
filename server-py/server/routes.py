@@ -72,6 +72,9 @@ async def start_session(body: StartSessionBody) -> dict:
         room.start_session()
     except RuntimeError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    # Create the first Hand (PRE_DICE) so clients have state to render once
+    # they auth on the GamePage. Otherwise they sit at "Connecting…".
+    room.session.start_new_hand()
     # Tell every socket in the room to navigate to the game page.
     from server.app import sio
     await sio.emit(ServerEvent.START_GAME.value, {"code": body.code}, room=body.code)
