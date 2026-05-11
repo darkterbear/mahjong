@@ -125,7 +125,6 @@ def _wall_payload(hand: Hand) -> dict:
     back_drawn = (total - 1) - wall._back
     rem = max(0, total - front_drawn - back_drawn)
     offset = hand.wall_rotation_offset
-
     if rem == 0:
         return {
             "remaining": 0,
@@ -133,95 +132,58 @@ def _wall_payload(hand: Hand) -> dict:
             "next_back_position": None,
             "remaining_positions": [],
         }
+    break_stack = offset // 2  # physical stack index (0..71) of the break
 
-    # Build the set of physical flat indices STILL present in the wall.
-    # A stack is identified by (logical_flat // 2). It has 2 layers:
-    #   layer 0 (top)    = logical flat index 2*s
-    #   layer 1 (bottom) = logical flat index 2*s + 1
-    #
-    # Front draws remove tiles in flat order (0, 1, 2, ...) — already top-first.
-    # Back draws remove tiles from the end (143, 142, ...) — currently bottom-first,
-    # but we want to report positions TOP-FIRST per stack from the back end.
-    #
-    # "Back-drawn" means: back_drawn tiles have been taken from the back.
-    # Physical back index is back_drawn; in stack terms:
-    #   back_full_stacks = back_drawn // 2   (fully removed stacks from the end)
-    #   back_partial_top_gone = (back_drawn % 2) == 1  (one extra draw: bottom gone first,
-    #     but since we're reporting top-first, if bottom was drawn the top was drawn first)
-    #
-    # Wait — subterfuge removes bottom (flat 2s+1) BEFORE top (flat 2s) from the back.
-    # But for our visual representation we want to SHOW top-first removal.
-    # The remapping: actual draw from flat `143-k` maps to visual top-first ordering,
-    # where we show the top of the last stack gone first.
-    #
-    # For remaining_positions: a position is present if not yet drawn from either end.
-    # We track this by the flat index range [front_drawn .. total-1-back_drawn].
-
-    half_total = total // 2  # 72 stacks
-
-    # Stacks fully drawn from front: stacks 0 .. front_full_stacks-1
     front_full_stacks = front_drawn // 2
-    front_partial_top_gone = (front_drawn % 2) == 1  # stack front_full_stacks: top drawn, bottom remains
-
-    # Stacks fully drawn from back (top-first per stack):
-    # Each back draw takes the TOP of the current back stack, then its BOTTOM.
+    front_partial_top_gone = (front_drawn % 2) == 1
     back_full_stacks = back_drawn // 2
-    back_partial_top_gone = (back_drawn % 2) == 1  # back stack: top drawn, bottom remains
+    back_partial_top_gone = (back_drawn % 2) == 1
 
+    # Determine, for each physical stack, whether it has been fully drawn from
+    # either side, has just its top gone, or is fully present.
     present_flat: set[int] = set()
-    for s in range(half_total):
-        # Front side: skip stacks fully consumed from front.
-        if s < front_full_stacks:
-            continue  # fully drawn from front
-        if s == front_full_stacks and front_partial_top_gone:
-            # Top (layer 0) already drawn; only bottom (layer 1) remains.
-            physical = (offset + 2 * s + 1) % total
-            present_flat.add(physical)
+    for s in range(NUM_STACKS):
+        # CW front: k_front = how many stacks CW from break this stack is.
+        k_front = (break_stack - s) % NUM_STACKS
+        # CCW back: k_back = how many stacks CCW from break+1 this stack is.
+        k_back = (s - break_stack - 1) % NUM_STACKS
+
+        # Is this stack already fully drawn by either side?
+        if k_front < front_full_stacks:
+            continue
+        if k_back < back_full_stacks:
             continue
 
-        # Back side: stacks from the end.
-        from_end = half_total - 1 - s
-        if from_end < back_full_stacks:
-            continue  # fully drawn from back
-        if from_end == back_full_stacks and back_partial_top_gone:
-            # TOP already drawn from back; only bottom remains.
-            physical = (offset + 2 * s + 1) % total
-            present_flat.add(physical)
-            continue
+        # Was its top removed by either side?
+        top_gone = (
+            (k_front == front_full_stacks and front_partial_top_gone)
+            or (k_back == back_full_stacks and back_partial_top_gone)
+        )
+        if top_gone:
+            present_flat.add(s * 2 + 1)  # only the bottom remains
+        else:
+            present_flat.add(s * 2)
+            present_flat.add(s * 2 + 1)
 
-        # Both layers present.
-        present_flat.add((offset + 2 * s) % total)
-        present_flat.add((offset + 2 * s + 1) % total)
+    # Next-front position (CW direction, top-first per stack).
+    nf_stack = (break_stack - front_full_stacks) % NUM_STACKS
+    nf_layer = 1 if front_partial_top_gone else 0
+    nf = flat_to_position(nf_stack * 2 + nf_layer)
+
+    # Next-back position (CCW direction, top-first per stack).
+    nb_stack = (break_stack + 1 + back_full_stacks) % NUM_STACKS
+    nb_layer = 1 if back_partial_top_gone else 0
+    nb = flat_to_position(nb_stack * 2 + nb_layer)
 
     remaining_positions = []
     for f in sorted(present_flat):
         p = flat_to_position(f)
         remaining_positions.append([p.seat, p.stack, p.layer])
 
-    # Next-front position: top of the next front stack (or bottom if top already gone).
-    if front_partial_top_gone and front_full_stacks < half_total:
-        next_front_flat = (offset + 2 * front_full_stacks + 1) % total
-    else:
-        next_front_flat = (offset + 2 * front_full_stacks) % total
-    nf = flat_to_position(next_front_flat)
-
-    # Next-back position: TOP of the current back stack first, then BOTTOM.
-    back_s = half_total - 1 - back_full_stacks
-    if back_s < 0:
-        nb = None
-    elif back_partial_top_gone:
-        # TOP already gone; next draw takes the BOTTOM.
-        next_back_flat = (offset + 2 * back_s + 1) % total
-        nb = flat_to_position(next_back_flat)
-    else:
-        # TOP is next.
-        next_back_flat = (offset + 2 * back_s) % total
-        nb = flat_to_position(next_back_flat)
-
     return {
         "remaining": rem,
-        "next_front_position": [nf.seat, nf.stack, nf.layer] if nf else None,
-        "next_back_position": [nb.seat, nb.stack, nb.layer] if nb else None,
+        "next_front_position": [nf.seat, nf.stack, nf.layer],
+        "next_back_position": [nb.seat, nb.stack, nb.layer],
         "remaining_positions": remaining_positions,
     }
 

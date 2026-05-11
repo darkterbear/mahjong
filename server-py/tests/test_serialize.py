@@ -91,19 +91,18 @@ def test_state_update_other_hand_count_includes_pending_flowers() -> None:
 
 
 def test_state_update_wall_position_respects_dice_rotation() -> None:
-    """After dice rotation, next_front_position should report the physical break point."""
+    """After dice rotation, next_front_position should report the break stack's TOP layer."""
     h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=42)
     h.roll_dice()
-    # Record the dice break for comparison.
     expected_seat = h.dice_result.break_seat
-    expected_stack = max(0, min(17, 18 - h.dice_result.sum))
+    # compute_break_position gives stack = 18 - dice_sum (clamped).
+    from server.dice import compute_break_position
+    _, expected_stack = compute_break_position(0, h.dice_result.sum)
     s = build_state_update(
         hand=h, viewer_seat=0, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
     )
-    nf = s["wall"]["next_front_position"]
-    assert nf == [expected_seat, expected_stack, 0], \
-        f"expected [{expected_seat}, {expected_stack}, 0], got {nf}"
+    assert s["wall"]["next_front_position"] == [expected_seat, expected_stack, 0]
 
 
 def test_state_update_robbing_kong_window_flag() -> None:
@@ -178,17 +177,50 @@ def test_current_turn_advances_to_next_player_during_claim_window() -> None:
 def test_wall_back_draws_top_layer_first_per_stack() -> None:
     h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=42)
     h.roll_dice()
-    # Simulate one back-draw.
     h.game.wall.draw_replacement()
     s = build_state_update(
-        hand=h, viewer_seat=0, seats=["a", "b", "c", "d"],
-        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
     )
-    # After 1 back draw: the back-most stack's TOP should be gone; BOTTOM still present.
-    # The next_back_position should now point at that BOTTOM (layer 1).
     nb = s["wall"]["next_back_position"]
     assert nb is not None
-    assert nb[2] == 1  # layer 1 (bottom)
+    assert nb[2] == 1  # bottom layer, since top was drawn first
+
+
+def test_wall_front_advances_clockwise() -> None:
+    """After one front draw, the next_front_position should still be the
+    bottom of the break stack (top first). After two front draws, the next
+    position should be the TOP of the stack ONE CW (decreasing physical stack)
+    from the break."""
+    h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=42)
+    h.roll_dice()
+    # First draw: pops the top of the break stack.
+    h.game.wall.draw()
+    s1 = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    break_seat = h.dice_result.break_seat
+    from server.dice import compute_break_position
+    _, break_stack = compute_break_position(0, h.dice_result.sum)
+    assert s1["wall"]["next_front_position"] == [break_seat, break_stack, 1]
+    # Second draw: pops the bottom; next position should be the TOP of the
+    # stack one CW from break.
+    h.game.wall.draw()
+    s2 = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    nf = s2["wall"]["next_front_position"]
+    # CW = decreasing physical stack index (mod 72). With offset = break_seat*36+break_stack*2,
+    # break_stack_global = offset // 2 = break_seat*18 + break_stack.
+    # Next stack CW = (break_stack_global - 1) % 72; convert to (seat, stack).
+    NUM_STACKS = 72
+    break_stack_global = break_seat * 18 + break_stack
+    next_stack_global = (break_stack_global - 1) % NUM_STACKS
+    expected_seat = next_stack_global // 18
+    expected_stack = next_stack_global % 18
+    assert nf == [expected_seat, expected_stack, 0]
 
 
 def test_state_update_exposes_kong_eligible_tiles() -> None:
