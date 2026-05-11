@@ -1,237 +1,35 @@
 $blue: #527aff;
 $gray: #828282;
-$black: #333333;
-$dark-gray: #555555;
-
-$update-filter: drop-shadow(0px 0px 16px #FF4B12);
-$hover-filter: drop-shadow(0px 0px 16px $blue);
+$dark: #2b2b2b;
+$accent: #FF4B12;
 
 #game-page {
   position: relative;
   width: 100%;
   height: 100vh;
+  background: #143b25;
+  color: #eee;
+  font-family: sans-serif;
+  overflow: hidden;
+}
 
-  #timer {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    transform: scale(0.25);
-    transform-origin: top right;
-  }
+#hand-header {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2rem;
+  font-size: 14px;
+  z-index: 5;
+}
 
-  .new {
-    filter: $update-filter;
-  }
+.highlight {
+  filter: drop-shadow(0 0 12px $accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
 
-  #pending-action {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
-    display: flex;
-    flex-direction: column;
-
-    img {
-      width: 80px;
-      margin: 0 -8px;
-
-      cursor: pointer;
-
-      filter: $update-filter;
-    }
-  }
-
-  #my-tiles {
-    display: flex;
-    flex-direction: row;
-
-    position: absolute;
-    bottom: 4rem;
-    left: 50%;
-    transform: translateX(-50%);
-    
-    img {
-      width: 80px;
-      margin: 0 -8px;
-
-      cursor: pointer;
-
-      &:hover {
-        filter: $hover-filter;
-      }
-
-      transition: transform 0.3s ease;
-
-      &.interrupt {
-        transform: translateY(-1rem);
-
-        &.hover {
-          transform: translateY(-2rem);
-        }
-      }
-    }
-
-    .exposed {
-      display: flex;
-      margin-left: 1rem;
-    }
-  }
-
-  #my-discards {
-    display: flex;
-    flex-direction: row;
-
-    position: absolute;
-    bottom: 12rem;
-    left: 50%;
-    transform: translateX(-50%);
-    
-    img {
-      width: 50px;
-      margin: 0 -5px;
-    }
-  }
-
-  #my-turn-indicator {
-    position: absolute;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  #l-tiles {
-    display: flex;
-    flex-direction: column;
-    
-    position: absolute;
-    left: 4rem;
-    top: 50%;
-    transform: translateY(-50%);
-
-    img {
-      height: 50px;
-      margin: -8px 0;
-      transform: rotate(90deg);
-    }
-
-    .exposed {
-      display: flex;
-      flex-direction: column;
-      margin-top: 1rem;
-    }
-  }
-
-  #l-discards {
-    display: flex;
-    flex-direction: column;
-    
-    position: absolute;
-    left: 8rem;
-    top: 50%;
-    transform: translateY(-50%);
-
-    img {
-      height: 50px;
-      margin: -8px 0;
-      transform: rotate(90deg);
-    }
-  }
-
-  #l-username {
-    position: absolute;
-    left: 2rem;
-    top: 50%;
-    transform: translateY(-50%) rotate(90deg);
-  }
-
-  #r-tiles {
-    display: flex;
-    flex-direction: column-reverse;
-    
-    position: absolute;
-    right: 4rem;
-    top: 50%;
-    transform: translateY(-50%);
-
-    img {
-      height: 50px;
-      margin: -8px 0;
-      transform: rotate(-90deg);
-    }
-
-    .exposed {
-      display: flex;
-      flex-direction: column-reverse;
-      margin-bottom: 1rem;
-    }
-  }
-
-  #r-discards {
-    display: flex;
-    flex-direction: column-reverse;
-    
-    position: absolute;
-    right: 8rem;
-    top: 50%;
-    transform: translateY(-50%);
-
-    img {
-      height: 50px;
-      margin: -8px 0;
-      transform: rotate(-90deg);
-    }
-  }
-
-  #r-username {
-    position: absolute;
-    right: 2rem;
-    top: 50%;
-    transform: translateY(-50%) rotate(-90deg);
-  }
-
-  #t-tiles {
-    display: flex;
-    flex-direction: row-reverse;
-
-    position: absolute;
-    top: 4rem;
-    left: 50%;
-    transform: translateX(-50%);
-    
-    img {
-      width: 50px;
-      margin: 0 -5px;
-      transform: rotate(180deg);
-    }
-
-    .exposed {
-      display: flex;
-      flex-direction: row-reverse;
-      margin-right: 1rem;
-    }
-  }
-
-  #t-discards {
-    display: flex;
-    flex-direction: row-reverse;
-
-    position: absolute;
-    top: 8rem;
-    left: 50%;
-    transform: translateX(-50%);
-    
-    img {
-      width: 50px;
-      margin: 0 -5px;
-      transform: rotate(180deg);
-    }
-  }
-
-  #t-username {
-    position: absolute;
-    left: 50%;
-    top: 2rem;
-    transform: translateX(-50%);
-  }
+@keyframes pulse {
+  0%, 100% { filter: drop-shadow(0 0 8px $accent); }
+  50%      { filter: drop-shadow(0 0 16px $accent); }
 }
