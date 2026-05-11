@@ -21,3 +21,39 @@
     margin-left: 24px;
   }
 }
+
+.kong-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.5);
+  padding: 6px 12px;
+  border-radius: 6px;
+
+  .picker-label {
+    color: white;
+    font-size: 14px;
+  }
+  .picker-tile {
+    width: 48px;
+    height: auto;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.15s;
+  }
+  .picker-tile:hover {
+    filter: drop-shadow(0 0 8px #FF4B12);
+    transform: translateY(-4px);
+  }
+  .empty {
+    color: #999;
+    font-style: italic;
+  }
+  .cancel {
+    background: #6b6b6b;
+    color: white;
+    border: 0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+}

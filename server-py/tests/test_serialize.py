@@ -137,3 +137,21 @@ def test_state_update_normal_claim_window_not_robbing() -> None:
     )
     assert s["pending_claim_window"] is not None
     assert s["pending_claim_window"]["is_robbing_kong_window"] is False
+
+
+def test_state_update_exposes_kong_eligible_tiles() -> None:
+    h = _setup_playing()
+    p = h.game.players[0]
+    # 4 of bamboo-1 → concealed gang eligible
+    while p.hand[0] < 4:
+        p.add_tile(0)
+    # peng of bamboo-2 + 1 in hand → added gang eligible
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    assert 0 in s["you"]["concealed_gang_tiles"]
+    assert 1 in s["you"]["added_gang_tiles"]

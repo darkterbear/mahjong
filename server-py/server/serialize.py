@@ -33,6 +33,8 @@ def build_state_update(
         "flowers": list(you_player.flowers),
         "drawn_tile": you_player._just_drew,
         "score": cumulative_scores[viewer_seat],
+        "concealed_gang_tiles": list(you_player.can_gang_self()),
+        "added_gang_tiles": list(you_player.can_gang_add()),
     }
 
     others = []

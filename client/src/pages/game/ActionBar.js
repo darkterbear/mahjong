@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import {
   rollDice, drawFront, drawBack, claim,
   declareConcealedGang, declareAddedGang, declareSelfHu, undo, nextHand,
 } from '../../api';
+import { tileImageUrl } from '../../sharedTiles';
 import './ActionBar.scss';
 
 const LABELS = {
@@ -17,49 +19,77 @@ const LABELS = {
   next_hand: 'Next Hand',
 };
 
-const HANDLERS = {
-  roll_dice: () => rollDice(),
-  draw_front: () => drawFront(),
-  draw_back: () => drawBack(),
-  hu: () => claim('hu'),
-  peng: () => claim('peng'),
-  chi: () => claim('chi'),  // chi-tile picker handled in a follow-up flow
-  gang_open: () => claim('gang_open'),
-  declare_concealed_gang: () => {
-    const t = window.prompt('Tile id for concealed kong:');
-    if (t != null) declareConcealedGang(parseInt(t, 10));
-  },
-  declare_added_gang: () => {
-    const t = window.prompt('Tile id for added kong:');
-    if (t != null) declareAddedGang(parseInt(t, 10));
-  },
-  next_hand: () => nextHand(),
-};
-
 export function ActionBar({ state }) {
+  const [picker, setPicker] = useState(null); // 'concealed' | 'added' | null
   const actions = state.available_actions || [];
-  // DISCARD / DECLARE_FLOWER are handled via tile clicks, not buttons.
   const buttons = actions.filter(
     (a) => !['discard', 'declare_flower'].includes(a)
   );
+  const isCurrentSeat = state.current_turn_seat === state.you.seat;
+  const showSelfHu = actions.includes('hu') && isCurrentSeat;
 
-  const showSelfHu = actions.includes('hu') && state.current_turn_seat === state.you.seat;
+  const handleClick = (a) => {
+    switch (a) {
+      case 'roll_dice': return rollDice();
+      case 'draw_front': return drawFront();
+      case 'draw_back': return drawBack();
+      case 'hu': return showSelfHu ? declareSelfHu() : claim('hu');
+      case 'peng': return claim('peng');
+      case 'chi': return claim('chi');  // chi disambiguation deferred
+      case 'gang_open': return claim('gang_open');
+      case 'declare_concealed_gang': return setPicker('concealed');
+      case 'declare_added_gang': return setPicker('added');
+      case 'next_hand': return nextHand();
+      default: return null;
+    }
+  };
+
+  const eligibleTiles = picker === 'concealed'
+    ? (state.you.concealed_gang_tiles || [])
+    : picker === 'added'
+    ? (state.you.added_gang_tiles || [])
+    : [];
+
+  const onPickTile = (tile_id) => {
+    if (picker === 'concealed') declareConcealedGang(tile_id);
+    else if (picker === 'added') declareAddedGang(tile_id);
+    setPicker(null);
+  };
 
   return (
     <div className="action-bar">
-      {buttons.map((a) => (
-        <button
-          key={a}
-          onClick={() => {
-            if (a === 'hu' && showSelfHu) declareSelfHu();
-            else HANDLERS[a]?.();
-          }}
-        >
-          {LABELS[a] || a}
-        </button>
-      ))}
-      {state.can_undo && (
-        <button className="undo" onClick={() => undo()}>Undo</button>
+      {!picker && (
+        <>
+          {buttons.map((a) => (
+            <button key={a} onClick={() => handleClick(a)}>
+              {LABELS[a] || a}
+            </button>
+          ))}
+          {state.can_undo && (
+            <button className="undo" onClick={() => undo()}>Undo</button>
+          )}
+        </>
+      )}
+      {picker && (
+        <div className="kong-picker">
+          <span className="picker-label">
+            Pick a tile to {picker === 'concealed' ? 'concealed-kong' : 'add-kong'}:
+          </span>
+          {eligibleTiles.length === 0 ? (
+            <span className="empty">(no eligible tiles)</span>
+          ) : (
+            eligibleTiles.map((tid) => (
+              <img
+                key={tid}
+                className="picker-tile"
+                src={tileImageUrl(tid)}
+                onClick={() => onPickTile(tid)}
+                alt=""
+              />
+            ))
+          )}
+          <button className="cancel" onClick={() => setPicker(null)}>Cancel</button>
+        </div>
       )}
     </div>
   );
