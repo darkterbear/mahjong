@@ -56,4 +56,17 @@
     border-radius: 4px;
     cursor: pointer;
   }
+  .chi-combo {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    margin-right: 8px;
+
+    &:hover {
+      background: rgba(82,122,255,0.15);
+    }
+  }
 }

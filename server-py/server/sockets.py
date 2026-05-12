@@ -174,36 +174,43 @@ async def on_discard(sid: str, data: dict) -> None:
 
 @sio.on(ClientEvent.CLAIM.value)
 async def on_claim(sid: str, data: dict) -> None:
+    import sys, traceback
     room, player = _ctx(sid)
     if not room or not room.session: return
     hand = room.session.current_hand
     if not hand: return
     seat = room.session.seats.index(player.player_id)
-    if data["action"] == "hu":
-        # Detect if multiple players can hu on this tile.
-        others = []
-        if hand.game.phase.name == "CLAIM_WINDOW":
-            tile = hand.game.last_discard
-            discarder = hand.game.last_discard_player
-            for s in range(4):
-                if s == seat or s == discarder:
-                    continue
-                if hand.can_hu_on_tile(s, tile):
-                    others.append(s)
-        if others:
-            # Co-hu window — pause for other eligible seats to respond.
+    try:
+        if data["action"] == "hu":
+            # Detect if multiple players can hu on this tile.
+            others = []
+            if hand.game.phase.name == "CLAIM_WINDOW":
+                tile = hand.game.last_discard
+                discarder = hand.game.last_discard_player
+                for s in range(4):
+                    if s == seat or s == discarder:
+                        continue
+                    if hand.can_hu_on_tile(s, tile):
+                        others.append(s)
+            if others:
+                # Co-hu window — pause for other eligible seats to respond.
+                hand.snapshot()
+                hand.start_co_hu_window(seat)
+                await _broadcast_state(room)
+                return
+            # Single-winner — proceed as before.
             hand.snapshot()
-            hand.start_co_hu_window(seat)
-            await _broadcast_state(room)
+            hand.apply_claim(seat, "hu")
+            await _settle_single_or_multi(room)
             return
-        # Single-winner — proceed as before.
         hand.snapshot()
-        hand.apply_claim(seat, "hu")
-        await _settle_single_or_multi(room)
-        return
-    hand.snapshot()
-    hand.apply_claim(seat, data["action"], tiles=data.get("tiles"))
-    await _broadcast_state(room)
+        hand.apply_claim(seat, data["action"], tiles=data.get("tiles"))
+        await _broadcast_state(room)
+    except Exception as e:
+        print(f"[on_claim] action={data.get('action')} tiles={data.get('tiles')} seat={seat} error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        # Re-broadcast current state so the client doesn't get stuck.
+        await _broadcast_state(room)
 
 
 @sio.on(ClientEvent.CO_HU_RESPONSE.value)

@@ -22,7 +22,7 @@ const LABELS = {
 };
 
 export function ActionBar({ state }) {
-  const [picker, setPicker] = useState(null); // 'concealed' | 'added' | null
+  const [picker, setPicker] = useState(null); // 'concealed' | 'added' | 'chi' | null
   const actions = state.available_actions || [];
   const buttons = actions.filter(
     (a) => !['discard', 'declare_flower'].includes(a)
@@ -43,7 +43,7 @@ export function ActionBar({ state }) {
       }
       case 'co_hu_pass': return socket.emit('co_hu_response', { accept: false });
       case 'peng': return claim('peng');
-      case 'chi': return claim('chi');  // chi disambiguation deferred
+      case 'chi': return setPicker('chi');
       case 'gang_open': return claim('gang_open');
       case 'declare_concealed_gang': return setPicker('concealed');
       case 'declare_added_gang': return setPicker('added');
@@ -58,9 +58,18 @@ export function ActionBar({ state }) {
     ? (state.you.added_gang_tiles || [])
     : [];
 
+  const chiCombos = picker === 'chi'
+    ? (state.pending_claim_window?.chi_combos || [])
+    : [];
+
   const onPickTile = (tile_id) => {
     if (picker === 'concealed') declareConcealedGang(tile_id);
     else if (picker === 'added') declareAddedGang(tile_id);
+    setPicker(null);
+  };
+
+  const onPickChiCombo = (combo) => {
+    claim('chi', combo);
     setPicker(null);
   };
 
@@ -78,7 +87,7 @@ export function ActionBar({ state }) {
           )}
         </>
       )}
-      {picker && (
+      {picker && picker !== 'chi' && (
         <div className="kong-picker">
           <span className="picker-label">
             Pick a tile to {picker === 'concealed' ? 'concealed-kong' : 'add-kong'}:
@@ -94,6 +103,27 @@ export function ActionBar({ state }) {
                 onClick={() => onPickTile(tid)}
                 alt=""
               />
+            ))
+          )}
+          <button className="cancel" onClick={() => setPicker(null)}>Cancel</button>
+        </div>
+      )}
+      {picker === 'chi' && (
+        <div className="kong-picker">
+          <span className="picker-label">Pick the two tiles to chi with:</span>
+          {chiCombos.length === 0 ? (
+            <span className="empty">(no chi combos)</span>
+          ) : (
+            chiCombos.map((combo, i) => (
+              <span
+                key={i}
+                className="chi-combo"
+                onClick={() => onPickChiCombo(combo)}
+              >
+                {combo.map((tid, j) => (
+                  <img key={j} className="picker-tile" src={tileImageUrl(tid)} alt="" />
+                ))}
+              </span>
             ))
           )}
           <button className="cancel" onClick={() => setPicker(null)}>Cancel</button>

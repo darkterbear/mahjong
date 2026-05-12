@@ -223,6 +223,67 @@ def test_wall_front_advances_clockwise() -> None:
     assert nf == [expected_seat, expected_stack, 0]
 
 
+def test_pending_claim_window_exposes_chi_combos() -> None:
+    h = _setup_playing()
+    # Seat 1 will be eligible for chi from seat 0's discard.
+    p1 = h.game.players[1]
+    # Give seat 1 a full-enough hand that includes bamboo-2 and bamboo-4 so it
+    # can chi bamboo-3. Chi requires a realistically-sized hand to be offered.
+    import numpy as np
+    p1.hand = np.zeros(34, dtype=np.int8)
+    for tid in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]:
+        p1.add_tile(tid)
+    p1.add_tile(1)  # bamboo-2
+    p1.add_tile(3)  # bamboo-4
+    h.game.players[0].add_tile(2)  # bamboo-3 for seat 0 to discard
+    h.apply_discard(2)
+    s = build_state_update(
+        hand=h, viewer_seat=1, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    pcw = s["pending_claim_window"]
+    assert pcw is not None
+    assert "chi_combos" in pcw
+    assert [1, 3] in pcw["chi_combos"]
+
+
+def test_drawn_tile_appended_at_end_of_own_hand() -> None:
+    h = _setup_playing()
+    # Force seat 0 to be in DISCARD phase having just drawn a known tile.
+    import numpy as np
+    p = h.game.players[0]
+    p.hand = np.zeros(34, dtype=np.int8)
+    for tid in [0, 2, 5, 10]:
+        p.add_tile(tid)
+    # Mark tile 5 as the just-drawn (manually, simulating draw_front result).
+    p._just_drew = 5
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    # Hand should end with the drawn tile (5).
+    assert s["you"]["hand"][-1] == 5
+    # The OTHER tiles should appear sorted before it.
+    assert s["you"]["hand"][:-1] == [0, 2, 10]
+
+
+def test_drawn_tile_resorts_after_discard() -> None:
+    h = _setup_playing()
+    import numpy as np
+    p = h.game.players[0]
+    p.hand = np.zeros(34, dtype=np.int8)
+    for tid in [0, 2, 5, 10]:
+        p.add_tile(tid)
+    p._just_drew = 5
+    h.apply_discard(5)
+    # After discard, _just_drew is reset; hand re-sorts naturally.
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    assert s["you"]["hand"] == [0, 2, 10]
+
+
 def test_state_update_exposes_kong_eligible_tiles() -> None:
     h = _setup_playing()
     p = h.game.players[0]

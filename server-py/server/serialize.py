@@ -35,7 +35,21 @@ def build_state_update(
 ) -> dict:
     """Return the JSON dict for `state_update` from viewer_seat's POV."""
     you_player = hand.game.players[viewer_seat]
-    you_hand = _hand_as_list(you_player.hand) + list(hand.pending_flowers[viewer_seat])
+    drawn = you_player._just_drew
+    # Build hand list. If the player just drew a non-flower (i.e., they're in
+    # DISCARD phase awaiting discard), pull that tile out of the sorted hand
+    # and append it at the end so it's clearly the freshly-drawn tile.
+    if drawn is not None and 0 <= drawn < 34 and you_player.hand[drawn] > 0:
+        # Build the hand WITHOUT one instance of `drawn`.
+        sorted_hand: list[int] = []
+        for tid in range(34):
+            count = int(you_player.hand[tid])
+            if tid == drawn:
+                count -= 1  # leave one out
+            sorted_hand.extend([tid] * count)
+        you_hand = sorted_hand + [drawn] + list(hand.pending_flowers[viewer_seat])
+    else:
+        you_hand = _hand_as_list(you_player.hand) + list(hand.pending_flowers[viewer_seat])
     you = {
         "seat": viewer_seat,
         "seat_wind": _seat_wind_name(viewer_seat, hand.dealer_seat),
@@ -196,9 +210,15 @@ def _pending_claim_window(hand: Hand, viewer_seat: int) -> Optional[dict]:
     available = [a.value for a in hand.available_actions(viewer_seat)
                  if a in (AvailableAction.PENG, AvailableAction.CHI,
                           AvailableAction.GANG_OPEN, AvailableAction.HU)]
+    chi_combos: list[list[int]] = []
+    if AvailableAction.CHI in hand.available_actions(viewer_seat):
+        viewer = hand.game.players[viewer_seat]
+        tile = hand.game.last_discard
+        chi_combos = [list(combo) for combo in viewer.can_chi(tile)]
     return {
         "discarder_seat": hand.game.last_discard_player,
         "tile": hand.game.last_discard,
         "your_options": available,
         "is_robbing_kong_window": hand.game._pending_gang_add is not None,
+        "chi_combos": chi_combos,
     }
