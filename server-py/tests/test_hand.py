@@ -276,6 +276,23 @@ def test_record_co_hu_response_completes() -> None:
     assert h.co_hu_active is False
 
 
+def test_peng_removes_tile_from_discarders_pile() -> None:
+    h = _fast_forward_to_playing()
+    p0 = h.game.players[0]
+    p2 = h.game.players[2]
+    target = 0
+    while p2.hand[target] < 2:
+        p2.add_tile(target)
+    p0.add_tile(target)
+    pre_discard_count = len(p0.discards)
+    h.apply_discard(target)
+    # After discard, discard pile grew by 1.
+    assert len(p0.discards) == pre_discard_count + 1
+    # Peng claim removes the tile from discarder's pile.
+    h.apply_claim(seat=2, claim_type="peng")
+    assert len(p0.discards) == pre_discard_count
+
+
 def test_auto_resolve_round_drains_pending_for_seat() -> None:
     h = Hand(dealer_seat=0, round_wind_index=0, dealer_streak=0, seed=0)
     h.roll_dice()

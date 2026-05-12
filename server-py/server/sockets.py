@@ -354,6 +354,9 @@ async def _settle_single_or_multi(room: Room) -> None:
         "cumulative": s.cumulative_scores,
         "next_dealer_seat": s.next_hand_dealer_seat(),
     }, room=room.code)
+    # Broadcast updated state so the scoreboard reflects the new cumulative
+    # scores while the settlement modal is shown.
+    await _broadcast_state(room)
 
 
 async def _settle_flower_special_win(room: Room, hand, special: tuple[int, int | None]) -> None:
@@ -425,3 +428,6 @@ async def _finalize_co_hu(room: Room) -> None:
         "cumulative": s.cumulative_scores,
         "next_dealer_seat": s.next_hand_dealer_seat(),
     }, room=room.code)
+    # Broadcast updated state so the scoreboard reflects the new cumulative
+    # scores while the settlement modal is shown.
+    await _broadcast_state(room)

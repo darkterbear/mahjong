@@ -292,6 +292,10 @@ class Hand:
                 self.game.resolve_claim_window(claims)
             else:
                 self.game.step(action)
+            # Remove the claimed tile from the discarder's pile (it's now part
+            # of the winner's hand for scoring purposes, not on the table).
+            if discarder is not None and self.game.players[discarder].discards:
+                self.game.players[discarder].discards.pop()
             self.phase = HandPhase.SETTLEMENT
             return
 
@@ -304,6 +308,8 @@ class Hand:
             )
             action = Action(ActionType.PENG, tile=tile, player=seat, meld=meld)
             self.game.step(action)
+            if discarder is not None and self.game.players[discarder].discards:
+                self.game.players[discarder].discards.pop()
             return
 
         if claim_type == "gang_open":
@@ -315,6 +321,8 @@ class Hand:
             )
             action = Action(ActionType.GANG_CALL, tile=tile, player=seat, meld=meld)
             self.game.step(action)
+            if discarder is not None and self.game.players[discarder].discards:
+                self.game.players[discarder].discards.pop()
             self.must_draw_back = True
             return
 
@@ -332,6 +340,8 @@ class Hand:
                 meld=meld, chi_tiles=tiles,
             )
             self.game.step(action)
+            if discarder is not None and self.game.players[discarder].discards:
+                self.game.players[discarder].discards.pop()
             return
 
         raise ValueError(f"unknown claim_type: {claim_type}")

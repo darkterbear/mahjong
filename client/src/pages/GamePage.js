@@ -41,6 +41,12 @@ export function GamePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (state && state.phase !== 'SETTLEMENT' && settlement) {
+      setSettlement(null);
+    }
+  }, [state?.phase]);
+
   if (!state) {
     return <div id="game-page"><p>Connecting…</p></div>;
   }
@@ -88,6 +94,7 @@ export function GamePage() {
       {settlement && (
         <SettlementModal
           settlement={settlement}
+          state={state}
           isNextDealer={state.you.seat === settlement.next_dealer_seat}
           onDismiss={() => setSettlement(null)}
         />
