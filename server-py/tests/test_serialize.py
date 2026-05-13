@@ -113,13 +113,26 @@ def test_state_update_robbing_kong_window_flag() -> None:
     p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
     p.add_tile(1)
     h.declare_added_gang(1)
-    # From seat 2's POV (a non-discarder), the pending claim window should be flagged.
+    # Simulate the server marking seat 2 as an eligible robber.
+    h.start_robbing_kong_window([2])
+    # From seat 2's POV (eligible robber), the pending claim window should be flagged.
     s = build_state_update(
         hand=h, viewer_seat=2, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
     )
     assert s["pending_claim_window"] is not None
     assert s["pending_claim_window"]["is_robbing_kong_window"] is True
+
+    # A non-eligible viewer (seat 3) should NOT see the robbing-kong flag.
+    s3 = build_state_update(
+        hand=h, viewer_seat=3, seats=["a","b","c","d"],
+        cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
+    )
+    # Seat 3 is not in robbing_kong_pending, so pending_claim_window is None.
+    assert (
+        s3["pending_claim_window"] is None
+        or s3["pending_claim_window"]["is_robbing_kong_window"] is False
+    )
 
 
 def test_state_update_normal_claim_window_not_robbing() -> None:

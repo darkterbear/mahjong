@@ -182,6 +182,13 @@ async def on_claim(sid: str, data: dict) -> None:
     seat = room.session.seats.index(player.player_id)
     try:
         if data["action"] == "hu":
+            # During a robbing-kong window, skip the co-hu check — only the
+            # robbing seat fires; apply_claim handles the robbing-kong path.
+            if hand.game._pending_gang_add is not None:
+                hand.snapshot()
+                hand.apply_claim(seat, "hu")
+                await _settle_single_or_multi(room)
+                return
             # Detect if multiple players can hu on this tile.
             others = []
             if hand.game.phase.name == "CLAIM_WINDOW":
@@ -249,6 +256,34 @@ async def on_added_gang(sid: str, data: dict) -> None:
     if not hand: return
     hand.snapshot()
     hand.declare_added_gang(data["tile_id"])
+    # Subterfuge has now opened a CLAIM_WINDOW with _pending_gang_add set.
+    # Check who can actually rob.
+    tile = hand.game.last_discard
+    declarer = hand.game.last_discard_player
+    eligible = [s for s in range(4) if s != declarer and hand.can_hu_on_tile(s, tile)]
+    if not eligible:
+        # No robbers possible — auto-complete the gang immediately.
+        hand.close_claim_window_no_winner()
+    else:
+        hand.start_robbing_kong_window(eligible)
+    await _broadcast_state(room)
+
+
+@sio.on("robbing_kong_pass")
+async def on_robbing_kong_pass(sid: str, data: dict) -> None:
+    room, player = _ctx(sid)
+    if not room or not room.session: return
+    hand = room.session.current_hand
+    if not hand: return
+    if hand.game._pending_gang_add is None: return
+    seat = room.session.seats.index(player.player_id)
+    if seat not in hand.robbing_kong_pending:
+        return
+    hand.snapshot()
+    all_passed = hand.record_robbing_kong_pass(seat)
+    if all_passed:
+        # Everyone declined to rob — complete the gang.
+        hand.close_claim_window_no_winner()
     await _broadcast_state(room)
 
 

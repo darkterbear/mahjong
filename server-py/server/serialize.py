@@ -207,18 +207,26 @@ def _pending_claim_window(hand: Hand, viewer_seat: int) -> Optional[dict]:
         return None
     if viewer_seat == hand.game.last_discard_player:
         return None
+    # During a robbing-kong window, only eligible robbers see a claim window.
+    if hand.game._pending_gang_add is not None and viewer_seat not in hand.robbing_kong_pending:
+        return None
     available = [a.value for a in hand.available_actions(viewer_seat)
                  if a in (AvailableAction.PENG, AvailableAction.CHI,
-                          AvailableAction.GANG_OPEN, AvailableAction.HU)]
+                          AvailableAction.GANG_OPEN, AvailableAction.HU,
+                          AvailableAction.ROBBING_KONG_PASS)]
     chi_combos: list[list[int]] = []
     if AvailableAction.CHI in hand.available_actions(viewer_seat):
         viewer = hand.game.players[viewer_seat]
         tile = hand.game.last_discard
         chi_combos = [list(combo) for combo in viewer.can_chi(tile)]
+    is_robbing_kong = (
+        hand.game._pending_gang_add is not None
+        and viewer_seat in hand.robbing_kong_pending
+    )
     return {
         "discarder_seat": hand.game.last_discard_player,
         "tile": hand.game.last_discard,
         "your_options": available,
-        "is_robbing_kong_window": hand.game._pending_gang_add is not None,
+        "is_robbing_kong_window": is_robbing_kong,
         "chi_combos": chi_combos,
     }

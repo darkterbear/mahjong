@@ -27,6 +27,7 @@ class ClientEvent(str, Enum):
     UNDO = "undo"
     NEXT_HAND = "next_hand"
     CO_HU_RESPONSE = "co_hu_response"
+    ROBBING_KONG_PASS_EVT = "robbing_kong_pass"
 
 
 class ServerEvent(str, Enum):
@@ -54,6 +55,7 @@ class AvailableAction(str, Enum):
     UNDO = "undo"
     NEXT_HAND = "next_hand"
     CO_HU_PASS = "co_hu_pass"
+    ROBBING_KONG_PASS = "robbing_kong_pass"
 
 
 @dataclass

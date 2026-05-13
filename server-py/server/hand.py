@@ -59,6 +59,10 @@ class Hand:
         self.co_hu_remaining: list[int] = []
         self.co_hu_declined: list[int] = []
         self.co_hu_active: bool = False
+        # Robbing-the-kong state: set of eligible robber seats yet to respond.
+        # When a seat passes, it's removed; when this becomes empty, the gang
+        # is completed (or if any seat hu'd, settlement already fired).
+        self.robbing_kong_pending: list[int] = []
         # NOTE: flower_resolution_seat removed — auto-resolution is orchestrated
         # server-side in sockets.py using round-robin over pending_flowers.
 
@@ -297,6 +301,7 @@ class Hand:
             if discarder is not None and self.game.players[discarder].discards:
                 self.game.players[discarder].discards.pop()
             self.phase = HandPhase.SETTLEMENT
+            self.robbing_kong_pending = []
             return
 
         if claim_type == "peng":
@@ -427,6 +432,23 @@ class Hand:
         self.co_hu_declined = []
         return self.apply_multi_hu(winners)
 
+    def start_robbing_kong_window(self, eligible_seats: list[int]) -> None:
+        """Open a robbing-kong window. eligible_seats = non-declarer seats
+        whose hand could be completed by the gang-add tile."""
+        if self.game._pending_gang_add is None:
+            raise RuntimeError("no pending gang_add to rob")
+        self.robbing_kong_pending = list(eligible_seats)
+
+    def record_robbing_kong_pass(self, seat: int) -> bool:
+        """Record that `seat` passed on robbing. Returns True if this was the
+        last pending response (caller should complete the gang)."""
+        if seat in self.robbing_kong_pending:
+            self.robbing_kong_pending.remove(seat)
+        return len(self.robbing_kong_pending) == 0
+
+    def clear_robbing_kong(self) -> None:
+        self.robbing_kong_pending = []
+
     def declare_concealed_gang(self, tile_id: int) -> None:
         from subterfuge.types import Action, ActionType, Meld, MeldType
         seat = self.game.current_player
@@ -544,22 +566,34 @@ class Hand:
 
         if self.game.phase == TurnPhase.CLAIM_WINDOW and seat != self.game.last_discard_player:
             from subterfuge.types import ActionType
-            valid = self.game.get_valid_actions(seat)
-            for a in valid:
-                if a.action_type == ActionType.HU:
-                    result.append(AvailableAction.HU)
-                elif a.action_type == ActionType.PENG:
-                    result.append(AvailableAction.PENG)
-                elif a.action_type == ActionType.GANG_CALL:
-                    result.append(AvailableAction.GANG_OPEN)
-                elif a.action_type == ActionType.CHI:
-                    result.append(AvailableAction.CHI)
-            # The next player counterclockwise of the discarder may also draw,
-            # which implicitly closes the claim window.
-            if self.game.last_discard_player is not None:
-                next_to_draw = (self.game.last_discard_player + 1) % 4
-                if seat == next_to_draw:
-                    result.append(AvailableAction.DRAW_FRONT)
+            # During a robbing-kong window, only eligible robbers see actions.
+            if self.game._pending_gang_add is not None:
+                if seat in self.robbing_kong_pending:
+                    valid = self.game.get_valid_actions(seat)
+                    for a in valid:
+                        if a.action_type == ActionType.HU:
+                            result.append(AvailableAction.HU)
+                    # Also expose a PASS so the seat can decline.
+                    result.append(AvailableAction.ROBBING_KONG_PASS)
+                # else: not eligible, no actions in this window
+            else:
+                # Normal post-discard claim window.
+                valid = self.game.get_valid_actions(seat)
+                for a in valid:
+                    if a.action_type == ActionType.HU:
+                        result.append(AvailableAction.HU)
+                    elif a.action_type == ActionType.PENG:
+                        result.append(AvailableAction.PENG)
+                    elif a.action_type == ActionType.GANG_CALL:
+                        result.append(AvailableAction.GANG_OPEN)
+                    elif a.action_type == ActionType.CHI:
+                        result.append(AvailableAction.CHI)
+                # The next player counterclockwise of the discarder may also draw,
+                # which implicitly closes the claim window.
+                if self.game.last_discard_player is not None:
+                    next_to_draw = (self.game.last_discard_player + 1) % 4
+                    if seat == next_to_draw:
+                        result.append(AvailableAction.DRAW_FRONT)
 
         # Deduplicate while preserving order.
         seen: set[AvailableAction] = set()

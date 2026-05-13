@@ -168,11 +168,73 @@ def test_added_gang_completes_when_window_closes() -> None:
     p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
     p.add_tile(1)
     h.declare_added_gang(1)
+    # No eligible robbers in this synthetic scenario — caller-equivalent of
+    # the socket handler closes the window immediately.
     h.close_claim_window_no_winner()
     assert h.game._pending_gang_add is None
     # The PENG meld should now be a GANG_ADD.
     assert any(m.meld_type == MeldType.GANG_ADD for m in p.melds)
     assert h.must_draw_back is True
+
+
+def test_robbing_kong_window_with_eligible_robber() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    h.start_robbing_kong_window([2])
+    # Seat 2 is the only eligible robber.
+    assert 2 in h.robbing_kong_pending
+    # Seat 2 passes → window completes.
+    all_passed = h.record_robbing_kong_pass(2)
+    assert all_passed is True
+    h.close_claim_window_no_winner()
+    assert h.game._pending_gang_add is None
+    assert any(m.meld_type == MeldType.GANG_ADD for m in p.melds)
+    assert h.must_draw_back is True
+
+
+def test_robbing_kong_multiple_robbers_all_pass() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    h.start_robbing_kong_window([2, 3])
+    assert 2 in h.robbing_kong_pending
+    assert 3 in h.robbing_kong_pending
+    # Seat 2 passes — not the last.
+    assert h.record_robbing_kong_pass(2) is False
+    # Seat 3 passes — last one.
+    assert h.record_robbing_kong_pass(3) is True
+    h.close_claim_window_no_winner()
+    assert h.game._pending_gang_add is None
+    assert any(m.meld_type == MeldType.GANG_ADD for m in p.melds)
+    assert h.must_draw_back is True
+
+
+def test_robbing_kong_available_actions_only_for_eligible_seat() -> None:
+    h = _fast_forward_to_playing()
+    p = h.game.players[0]
+    from subterfuge.types import Meld, MeldType
+    p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
+    p.add_tile(1)
+    h.declare_added_gang(1)
+    h.start_robbing_kong_window([2])
+    # Seat 2 (eligible) sees ROBBING_KONG_PASS.
+    actions_2 = h.available_actions(2)
+    assert AvailableAction.ROBBING_KONG_PASS in actions_2
+    # Seat 3 (not eligible) sees nothing during this window.
+    actions_3 = h.available_actions(3)
+    assert AvailableAction.ROBBING_KONG_PASS not in actions_3
+    assert AvailableAction.HU not in actions_3
+    assert AvailableAction.PENG not in actions_3
+    # Declarer (seat 0) sees nothing either.
+    actions_0 = h.available_actions(0)
+    assert AvailableAction.ROBBING_KONG_PASS not in actions_0
 
 
 def test_available_actions_pre_dice() -> None:

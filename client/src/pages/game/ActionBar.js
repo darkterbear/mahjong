@@ -19,6 +19,7 @@ const LABELS = {
   declare_added_gang: 'Add Kong',
   next_hand: 'Next Hand',
   co_hu_pass: 'Pass',
+  robbing_kong_pass: 'Pass (no rob)',
 };
 
 export function ActionBar({ state }) {
@@ -42,6 +43,7 @@ export function ActionBar({ state }) {
         return showSelfHu ? declareSelfHu() : claim('hu');
       }
       case 'co_hu_pass': return socket.emit('co_hu_response', { accept: false });
+      case 'robbing_kong_pass': return socket.emit('robbing_kong_pass');
       case 'peng': return claim('peng');
       case 'chi': return setPicker('chi');
       case 'gang_open': return claim('gang_open');
