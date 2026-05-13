@@ -20,59 +20,12 @@ export function GamePage() {
   const [settlement, setSettlement] = useState(null);
   const [dealing, setDealing] = useState(null);
 
-  useEffect(() => {
-    if (!socket) {
-      history.replace('/');
-      return;
-    }
-    if (code) authSocket(code);
-
-    socket.on('state_update', (s) => setState(s));
-    socket.on('dice_rolled', (d) => {
-      setDice(d);
-      setTimeout(() => setDice(null), 1500);
-      // Tile-shuffle sound fires here (start of a new round).
-      if (shuffleAudio.current && audioCtx.current) {
-        try {
-          const ctx = audioCtx.current;
-          if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-          const buf = buffers.current.shuffle;
-          if (buf) {
-            const src = ctx.createBufferSource();
-            src.buffer = buf;
-            const gain = ctx.createGain();
-            gain.gain.value = 2.0;
-            src.connect(gain).connect(ctx.destination);
-            src.start(0);
-          }
-        } catch (_) {}
-      }
-    });
-    socket.on('dealing_step', (d) => setDealing(d));
-    socket.on('hand_settlement', (s) => setSettlement(s));
-    socket.on('disconnect', () => history.replace('/'));
-
-    return () => {
-      socket.off('state_update');
-      socket.off('dice_rolled');
-      socket.off('dealing_step');
-      socket.off('hand_settlement');
-      socket.off('disconnect');
-    };
-  }, []);
-
-  useEffect(() => {
-    if (state && state.phase !== 'SETTLEMENT' && settlement) {
-      setSettlement(null);
-    }
-  }, [state?.phase]);
-
   // Sound effects via Web Audio API so we can boost gain (the source wavs are
-  // quieter than the UI calls for).
+  // quieter than the UI calls for). Declared BEFORE the socket-subscription
+  // effect so that effect's closure can see them.
   const audioCtx = useRef(null);
   const buffers = useRef({});           // { click: AudioBuffer, shuffle: AudioBuffer }
   const prevLogLen = useRef(0);
-  const prevPhase = useRef(null);
 
   const ensureContext = () => {
     if (!audioCtx.current) {
@@ -108,6 +61,39 @@ export function GamePage() {
   };
 
   useEffect(() => {
+    if (!socket) {
+      history.replace('/');
+      return;
+    }
+    if (code) authSocket(code);
+
+    socket.on('state_update', (s) => setState(s));
+    socket.on('dice_rolled', (d) => {
+      setDice(d);
+      setTimeout(() => setDice(null), 1500);
+      // Tile-shuffle sound fires here (start of a new round).
+      playSound('shuffle', 2.0);
+    });
+    socket.on('dealing_step', (d) => setDealing(d));
+    socket.on('hand_settlement', (s) => setSettlement(s));
+    socket.on('disconnect', () => history.replace('/'));
+
+    return () => {
+      socket.off('state_update');
+      socket.off('dice_rolled');
+      socket.off('dealing_step');
+      socket.off('hand_settlement');
+      socket.off('disconnect');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (state && state.phase !== 'SETTLEMENT' && settlement) {
+      setSettlement(null);
+    }
+  }, [state?.phase]);
+
+  useEffect(() => {
     loadBuffer('click', '/sounds/click.wav');
     loadBuffer('shuffle', '/sounds/shuffle.wav');
     // Browsers require a user gesture before audio plays — install a one-shot
@@ -124,8 +110,6 @@ export function GamePage() {
       window.removeEventListener('keydown', unlock, true);
     };
   }, []);
-
-  // (Shuffle sound is fired from the dice_rolled socket handler above.)
 
   // Play click on discards / claims.
   useEffect(() => {
