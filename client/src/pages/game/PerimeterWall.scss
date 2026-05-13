@@ -1,0 +1,105 @@
+.perimeter-wall {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.perimeter-wall-side {
+  position: absolute;
+  display: flex;
+
+  &.bottom {
+    bottom: 18%;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-direction: row;
+  }
+  &.top {
+    top: 18%;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+    flex-direction: row;
+  }
+  &.left {
+    left: 18%;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    flex-direction: row;
+  }
+  &.right {
+    right: 18%;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    flex-direction: row;
+  }
+}
+
+/* Each stack has 2 layers; overlap them so they look like one thick stack. */
+.stack {
+  position: relative;
+  width: 48px;
+  height: 72px;          /* tile height + a small offset for the bottom layer */
+  margin: 0 -4px;        /* lateral overlap to suggest tightly-adjacent tiles */
+}
+
+.wall-slot {
+  position: absolute;
+  width: 48px;
+  height: 64px;
+  display: block;
+  left: 0;
+  top: 0;
+}
+.wall-slot:nth-child(1) { z-index: 20; }  /* top layer — always above all bottom layers */
+.wall-slot:nth-child(2) {
+  z-index: 10;                            /* bottom layer */
+  filter: brightness(0.85);  /* darken the "underneath" tile */
+}
+
+/* Per-side offset: bottom-layer position relative to top-layer.
+ * Local CSS coordinates inside each rotated wall-side; the rotation maps
+ * them to the desired on-screen direction.
+ * Bottom wall (no rotation): bottom-layer appears upper-right on screen.
+ * Top wall (180° rotation): same local values, rotation inverts to match.
+ * Left wall (90° rotation): bottom-layer appears bottom-right on screen.
+ * Right wall (-90° rotation): bottom-layer appears upper-left on screen.
+ */
+.perimeter-wall-side.bottom .wall-slot:nth-child(2) {
+  top: -4px; left: 4px;
+}
+.perimeter-wall-side.top .wall-slot:nth-child(2) {
+  top: -4px; left: 4px;
+}
+.perimeter-wall-side.left .wall-slot:nth-child(2) {
+  top: -4px;
+}
+.perimeter-wall-side.right .wall-slot:nth-child(2) {
+  top: -4px;
+}
+
+.wall-slot.empty {
+  background: transparent;
+}
+
+.wall-slot.highlight {
+  filter: drop-shadow(0 0 12px #527aff);
+  animation: pulse-blue 1.4s ease-in-out infinite;
+  /* IMPORTANT: do NOT override z-index here — preserve the layer-stack rule. */
+}
+
+@keyframes pulse-blue {
+  0%, 100% { filter: drop-shadow(0 0 8px #527aff); }
+  50%      { filter: drop-shadow(0 0 16px #527aff); }
+}
+
+.wall-slot.clickable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.perimeter-wall-side.left .wall-slot:nth-child(1) {
+  left: -4px;
+}
+.perimeter-wall-side.right .wall-slot:nth-child(1) {
+  left: -4px;
+}

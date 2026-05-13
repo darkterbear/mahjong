@@ -1,0 +1,3 @@
+[submodule "subterfuge"]
+	path = subterfuge
+	url = git@github.com:darkterbear/subterfuge.git

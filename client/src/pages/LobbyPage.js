@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
-import { socket, connectSocket, startGame } from '../api'
+import { socket, startSession } from '../api'
 import './LobbyPage.scss'
 
 export function LobbyPage() {
@@ -17,28 +17,36 @@ export function LobbyPage() {
       return null
     }
 
-    // Connect to sockets, subscribe to update_players socket event
-    connectSocket()
-    socket.on('update_players', (players, leader) => {
+    // Socket already connected and authed in MenuPage/JoinPage before navigating here
+    socket.on('lobby_update', ({ players, leader }) => {
       setPlayers(players)
       setLeader(leader)
     })
 
     socket.on('start_game', () => {
-      history.replace('/game', { username })
+      history.replace('/game', { username, code })
     })
 
     socket.on('disconnect', () => {
       history.replace('/')
     })
+
+    return () => {
+      socket.off('lobby_update')
+      socket.off('start_game')
+      socket.off('disconnect')
+    }
   }, [])
 
   return <div id="lobby-page">
     <h1>Lobby</h1>
     <span id="code">Room code: {code}</span>
     { players.map(p => <p className={p === leader ? 'leader' : ''} key={p}>{p}</p>) }
-    { leader === username && 
-      <button onClick={startGame}>Start Game</button>
+    { players.length < 4
+      ? <p className="lobby-status">{players.length}/4 players</p>
+      : leader === username
+        ? <button onClick={() => startSession(code)}>Start Game</button>
+        : <p className="lobby-status">Waiting for {leader} to start…</p>
     }
   </div>
 }

@@ -1,0 +1,72 @@
+.action-bar {
+  position: absolute;
+  bottom: 9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 6;
+
+  button {
+    background: #527aff;
+    color: white;
+    border: 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button.undo {
+    background: #6b6b6b;
+    margin-left: 24px;
+  }
+}
+
+.kong-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.5);
+  padding: 6px 12px;
+  border-radius: 6px;
+
+  .picker-label {
+    color: white;
+    font-size: 14px;
+  }
+  .picker-tile {
+    width: 48px;
+    height: auto;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.15s;
+  }
+  .picker-tile:hover {
+    filter: drop-shadow(0 0 8px #FF4B12);
+    transform: translateY(-4px);
+  }
+  .empty {
+    color: #999;
+    font-style: italic;
+  }
+  .cancel {
+    background: #6b6b6b;
+    color: white;
+    border: 0;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .chi-combo {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    margin-right: 8px;
+
+    &:hover {
+      background: rgba(82,122,255,0.15);
+    }
+  }
+}

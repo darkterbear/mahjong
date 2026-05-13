@@ -1,0 +1,22 @@
+.dice-roll {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  padding: 16px 24px;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-direction: column;
+  z-index: 50;
+
+  .die {
+    width: 56px; height: 56px;
+    background: white; color: #2b2b2b;
+    border-radius: 8px;
+    font-size: 36px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+  }
+}

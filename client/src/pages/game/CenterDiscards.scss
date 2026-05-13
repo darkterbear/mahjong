@@ -1,0 +1,59 @@
+.center-discards {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  pointer-events: none;
+  z-index: 2;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+}
+
+.pile {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow: hidden;
+  padding: 4px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Assign each side to a specific grid cell. */
+.pile-top {
+  grid-column: 1;
+  grid-row: 1;
+  transform: rotate(180deg);
+  justify-content: center;
+}
+.pile-right {
+  grid-column: 2;
+  grid-row: 1;
+  transform: rotate(-90deg);
+  justify-content: center;
+}
+.pile-left {
+  grid-column: 1;
+  grid-row: 2;
+  transform: rotate(90deg);
+  justify-content: center;
+}
+.pile-bottom {
+  grid-column: 2;
+  grid-row: 2;
+  justify-content: center;
+}
+
+.discard-tile {
+  width: 32px;
+  height: auto;
+  margin: 0 -2px;
+}

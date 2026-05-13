@@ -106,3 +106,10 @@ build/
 
 # TernJS port file
 .tern-port
+
+# Python server
+server-py/.venv/
+server-py/__pycache__/
+server-py/**/__pycache__/
+server-py/.pytest_cache/
+server-py/*.egg-info/

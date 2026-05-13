@@ -1,0 +1,40 @@
+.settlement-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+
+  .modal-card {
+    background: #1f3a25;
+    color: #eee;
+    padding: 24px;
+    border-radius: 12px;
+    min-width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 12px 0;
+    width: 100%;
+  }
+  th, td { padding: 4px 8px; border-bottom: 1px solid #333; text-align: left; }
+
+  button {
+    background: #527aff;
+    color: white;
+    border: 0;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .winner-block {
+    margin-top: 12px;
+  }
+}
