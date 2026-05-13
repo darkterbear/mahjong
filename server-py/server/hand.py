@@ -66,6 +66,16 @@ class Hand:
         # NOTE: flower_resolution_seat removed — auto-resolution is orchestrated
         # server-side in sockets.py using round-robin over pending_flowers.
 
+        # Player-visible event log: list of {seat, kind, tile?, extra?} dicts.
+        # Kinds: draw_front, draw_back, discard, declare_flower, peng, chi,
+        # gang_open, gang_concealed, gang_added, hu, robbing_kong_hu.
+        self.event_log: list[dict] = []
+
+    def _log_event(self, seat: int, kind: str, **extra) -> None:
+        entry = {"seat": seat, "kind": kind}
+        entry.update(extra)
+        self.event_log.append(entry)
+
     def roll_dice(self) -> DiceResult:
         if self.phase != HandPhase.PRE_DICE:
             raise RuntimeError(f"roll_dice not allowed in phase {self.phase}")
@@ -147,6 +157,7 @@ class Hand:
         next_round: list[int] = []
         for flower in this_round:
             self.game.players[seat].add_flower(flower)
+            self._log_event(seat, "declare_flower", tile=flower)
             replacement = self.game.wall.draw_replacement()
             if replacement is None:
                 self.phase = HandPhase.SETTLEMENT
@@ -213,6 +224,7 @@ class Hand:
         # Chain flower resolution: if we drew a flower, declare it and draw again.
         while is_flower(tile):
             self.game.players[seat].add_flower(tile)
+            self._log_event(seat, "declare_flower", tile=tile)
             tile = self.game.wall.draw_replacement()
             if tile is None:
                 self.phase = HandPhase.SETTLEMENT
@@ -220,6 +232,7 @@ class Hand:
                 self.must_draw_back = False
                 return
         self.game.players[seat].add_tile(tile)
+        self._log_event(seat, "draw_back", tile=tile)
         self.game._replacement_draw = True
         self.must_draw_back = False
 
@@ -244,6 +257,7 @@ class Hand:
         while is_flower(tile):
             drew_any_flower = True
             self.game.players[seat].add_flower(tile)
+            self._log_event(seat, "declare_flower", tile=tile)
             tile = self.game.wall.draw_replacement()
             if tile is None:
                 self.phase = HandPhase.SETTLEMENT
@@ -254,12 +268,15 @@ class Hand:
         # 杠上 flag only if the final non-flower came from the back of the wall
         # (i.e., we chained through at least one flower).
         self.game._replacement_draw = drew_any_flower
+        self._log_event(seat, "draw_front", tile=tile)
         return tile
 
     def apply_discard(self, tile_id: int) -> None:
         from subterfuge.types import Action, ActionType
-        action = Action(ActionType.DISCARD, tile=tile_id, player=self.game.current_player)
+        seat = self.game.current_player
+        action = Action(ActionType.DISCARD, tile=tile_id, player=seat)
         self.game.step(action)
+        self._log_event(seat, "discard", tile=tile_id)
 
     def apply_claim(
         self,
@@ -300,6 +317,8 @@ class Hand:
             # of the winner's hand for scoring purposes, not on the table).
             if discarder is not None and self.game.players[discarder].discards:
                 self.game.players[discarder].discards.pop()
+            kind = "robbing_kong_hu" if self.game._is_robbing_kong else "hu"
+            self._log_event(seat, kind, tile=tile)
             self.phase = HandPhase.SETTLEMENT
             self.robbing_kong_pending = []
             return
@@ -315,6 +334,7 @@ class Hand:
             self.game.step(action)
             if discarder is not None and self.game.players[discarder].discards:
                 self.game.players[discarder].discards.pop()
+            self._log_event(seat, "peng", tile=tile)
             return
 
         if claim_type == "gang_open":
@@ -328,6 +348,7 @@ class Hand:
             self.game.step(action)
             if discarder is not None and self.game.players[discarder].discards:
                 self.game.players[discarder].discards.pop()
+            self._log_event(seat, "gang_open", tile=tile)
             self.must_draw_back = True
             return
 
@@ -347,6 +368,7 @@ class Hand:
             self.game.step(action)
             if discarder is not None and self.game.players[discarder].discards:
                 self.game.players[discarder].discards.pop()
+            self._log_event(seat, "chi", tile=tile, with_tiles=tiles)
             return
 
         raise ValueError(f"unknown claim_type: {claim_type}")
@@ -455,6 +477,7 @@ class Hand:
         meld = Meld(meld_type=MeldType.GANG_CONCEALED, tiles=[tile_id] * 4)
         action = Action(ActionType.GANG_SELF, tile=tile_id, player=seat, meld=meld)
         self.game.step(action)
+        self._log_event(seat, "gang_concealed", tile=tile_id)
         self.must_draw_back = True
 
     def declare_added_gang(self, tile_id: int) -> None:
@@ -473,6 +496,7 @@ class Hand:
         )
         action = Action(ActionType.GANG_ADD, tile=tile_id, player=seat, meld=meld)
         self.game.step(action)
+        self._log_event(seat, "gang_added", tile=tile_id)
         # NOTE: subterfuge's _handle_gang_add stages last_discard for the robbing
         # window. must_draw_back is set later by close_claim_window_no_winner via
         # _complete_gang_add inside subterfuge.
@@ -480,12 +504,14 @@ class Hand:
     def declare_self_hu(self) -> None:
         from subterfuge.types import Action, ActionType
         seat = self.game.current_player
+        hu_tile = self.game.players[seat]._just_drew or -1
         action = Action(
             ActionType.HU,
-            tile=self.game.players[seat]._just_drew or -1,
+            tile=hu_tile,
             player=seat,
         )
         self.game.step(action)
+        self._log_event(seat, "hu", tile=hu_tile, self_draw=True)
         self.phase = HandPhase.SETTLEMENT
 
     def close_claim_window_no_winner(self) -> None:

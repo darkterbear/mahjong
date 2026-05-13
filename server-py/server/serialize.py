@@ -107,6 +107,7 @@ def build_state_update(
         "pending_claim_window": pending,
         "pending_co_hu": pending_co_hu,
         "can_undo": len(hand._snapshots) > 0,
+        "event_log": list(hand.event_log),
     }
 
 

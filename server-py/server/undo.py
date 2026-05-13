@@ -25,6 +25,7 @@ def take_snapshot(hand) -> HandSnapshot:
         "co_hu_declined": list(hand.co_hu_declined),
         "co_hu_active": hand.co_hu_active,
         "robbing_kong_pending": list(hand.robbing_kong_pending),
+        "event_log": copy.deepcopy(hand.event_log),
     })
 
 
@@ -40,3 +41,4 @@ def restore_snapshot(hand, snap: HandSnapshot) -> None:
     hand.co_hu_declined = list(snap.payload.get("co_hu_declined", []))
     hand.co_hu_active = snap.payload.get("co_hu_active", False)
     hand.robbing_kong_pending = list(snap.payload.get("robbing_kong_pending", []))
+    hand.event_log = list(snap.payload.get("event_log", []))

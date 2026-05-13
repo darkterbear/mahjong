@@ -1,0 +1,42 @@
+.event-log {
+  position: absolute;
+  top: calc(1rem + 220px);   /* sit below the scoreboard */
+  left: 1rem;
+  width: 200px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #eee;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  z-index: 5;
+
+  h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.event-log-scroll {
+  max-height: 120px;          /* about 5 lines */
+  overflow-y: auto;
+
+  /* Slim scrollbar so it doesn't dominate. */
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+}
+
+.event-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-line:last-child { border-bottom: none; }
+.event-actor { font-weight: 600; }
+.event-verb { color: #aaa; }
+.event-tile { width: 22px; height: auto; }

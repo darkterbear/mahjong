@@ -8,6 +8,7 @@ import { PlayerSection } from './game/PlayerSection';
 import { ActionBar } from './game/ActionBar';
 import { SettlementModal } from './game/SettlementModal';
 import { DiceRoll } from './game/DiceRoll';
+import { EventLog } from './game/EventLog';
 import './GamePage.scss';
 
 export function GamePage() {
@@ -78,6 +79,7 @@ export function GamePage() {
       )}
 
       <Scoreboard state={state} />
+      <EventLog state={state} />
 
       <PerimeterWall state={state} />
       <CenterDiscards state={state} />

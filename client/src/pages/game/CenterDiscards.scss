@@ -3,42 +3,53 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 360px;
-  height: 360px;
+  width: 400px;
+  height: 400px;
   pointer-events: none;
   z-index: 2;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
 }
 
 .pile {
-  position: absolute;
   display: flex;
   flex-wrap: wrap;
-  max-width: 280px;
+  align-content: flex-start;
+  overflow: hidden;
+  padding: 4px;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  max-width: 100%;
+  max-height: 100%;
 }
 
-.pile-bottom {
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  flex-direction: row;
-}
+/* Assign each side to a specific grid cell. */
 .pile-top {
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%) rotate(180deg);
-  flex-direction: row;
-}
-.pile-left {
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%) rotate(90deg);
-  flex-direction: row;
+  grid-column: 1;
+  grid-row: 1;
+  transform: rotate(180deg);
+  justify-content: center;
 }
 .pile-right {
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%) rotate(-90deg);
-  flex-direction: row;
+  grid-column: 2;
+  grid-row: 1;
+  transform: rotate(-90deg);
+  justify-content: center;
+}
+.pile-left {
+  grid-column: 1;
+  grid-row: 2;
+  transform: rotate(90deg);
+  justify-content: center;
+}
+.pile-bottom {
+  grid-column: 2;
+  grid-row: 2;
+  justify-content: center;
 }
 
 .discard-tile {
