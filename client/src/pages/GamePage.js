@@ -50,13 +50,30 @@ export function GamePage() {
 
   // Click sound for tactile events (discard, chi, peng, gang variants).
   const clickAudio = useRef(null);
+  const shuffleAudio = useRef(null);
   const prevLogLen = useRef(0);
+  const prevPhase = useRef(null);
   useEffect(() => {
     if (!clickAudio.current) {
       clickAudio.current = new Audio('/sounds/click.wav');
       clickAudio.current.preload = 'auto';
     }
+    if (!shuffleAudio.current) {
+      shuffleAudio.current = new Audio('/sounds/shuffle.wav');
+      shuffleAudio.current.preload = 'auto';
+    }
   }, []);
+  // Play the shuffle sound when a new round starts (entering DEALING phase).
+  useEffect(() => {
+    const phase = state?.phase;
+    if (phase === 'DEALING' && prevPhase.current !== 'DEALING' && shuffleAudio.current) {
+      try {
+        shuffleAudio.current.currentTime = 0;
+        shuffleAudio.current.play().catch(() => {});
+      } catch (_) {}
+    }
+    prevPhase.current = phase;
+  }, [state?.phase]);
   useEffect(() => {
     const log = state?.event_log || [];
     if (log.length > prevLogLen.current) {
