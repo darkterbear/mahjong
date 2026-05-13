@@ -1,10 +1,13 @@
 import { io } from 'socket.io-client';
 
-export const BASE_URL = process.env.REACT_APP_API_URL;
+// When REACT_APP_API_URL is set (dev mode pointing at a separate server),
+// use it. Otherwise default to same-origin (production / single-port build).
+export const BASE_URL = process.env.REACT_APP_API_URL || '';
 
 export let socket = null;
 export const connectSocket = () => {
-  socket = io(BASE_URL, { withCredentials: true, transports: ['websocket'] });
+  // Empty string → socket.io-client uses window.location for same-origin connect.
+  socket = io(BASE_URL || undefined, { withCredentials: true, transports: ['websocket'] });
   return socket;
 };
 

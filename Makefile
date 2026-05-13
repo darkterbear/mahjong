@@ -1,16 +1,16 @@
-.PHONY: dev install test build run clean
+.PHONY: dev install test build run serve clean
 
 # Make yarn (via corepack shims) available when it isn't already on PATH.
 export PATH := /usr/local/lib/node_modules/corepack/shims:$(PATH)
 
-# Default: print available targets.
 help:
 	@echo "Targets:"
 	@echo "  make install   — first-time setup (submodule + venv + yarn)"
-	@echo "  make dev       — run server + client concurrently, Ctrl+C kills both"
+	@echo "  make dev       — run server + client concurrently (hot reload), Ctrl+C kills both"
+	@echo "  make serve     — production-style: build client + run server on a single port"
 	@echo "  make test      — run all server + client tests"
-	@echo "  make build     — production build of the client"
-	@echo "  make run       — run the Python server only (no --reload)"
+	@echo "  make build     — production build of the client only"
+	@echo "  make run       — run the Python server only (no client build)"
 	@echo "  make clean     — remove caches + client build artifacts"
 
 dev:
@@ -33,6 +33,9 @@ test:
 
 build:
 	cd client && NODE_OPTIONS=--openssl-legacy-provider yarn build
+
+serve: build
+	cd server-py && .venv/bin/uvicorn server.app:app --host 0.0.0.0 --port 8080
 
 run:
 	cd server-py && .venv/bin/uvicorn server.app:app --host 0.0.0.0 --port 8080
