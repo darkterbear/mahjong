@@ -48,32 +48,74 @@ export function GamePage() {
     }
   }, [state?.phase]);
 
-  // Click sound for tactile events (discard, chi, peng, gang variants).
-  const clickAudio = useRef(null);
-  const shuffleAudio = useRef(null);
+  // Sound effects via Web Audio API so we can boost gain (the source wavs are
+  // quieter than the UI calls for).
+  const audioCtx = useRef(null);
+  const buffers = useRef({});           // { click: AudioBuffer, shuffle: AudioBuffer }
   const prevLogLen = useRef(0);
   const prevPhase = useRef(null);
+
+  const ensureContext = () => {
+    if (!audioCtx.current) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx.current = new Ctx();
+    }
+    if (audioCtx.current.state === 'suspended') {
+      audioCtx.current.resume().catch(() => {});
+    }
+    return audioCtx.current;
+  };
+
+  const loadBuffer = (name, url) => {
+    if (buffers.current[name]) return;
+    const ctx = ensureContext();
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((ab) => ctx.decodeAudioData(ab))
+      .then((buf) => { buffers.current[name] = buf; })
+      .catch(() => {});
+  };
+
+  const playSound = (name, gainValue = 4.0) => {
+    const ctx = ensureContext();
+    const buf = buffers.current[name];
+    if (!buf) return;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = gainValue;
+    src.connect(gain).connect(ctx.destination);
+    try { src.start(0); } catch (_) {}
+  };
+
   useEffect(() => {
-    if (!clickAudio.current) {
-      clickAudio.current = new Audio('/sounds/click.wav');
-      clickAudio.current.preload = 'auto';
-    }
-    if (!shuffleAudio.current) {
-      shuffleAudio.current = new Audio('/sounds/shuffle.wav');
-      shuffleAudio.current.preload = 'auto';
-    }
+    loadBuffer('click', '/sounds/click.wav');
+    loadBuffer('shuffle', '/sounds/shuffle.wav');
+    // Browsers require a user gesture before audio plays — install a one-shot
+    // resume on the first pointerdown/keydown anywhere on the page.
+    const unlock = () => {
+      ensureContext();
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    return () => {
+      window.removeEventListener('pointerdown', unlock, true);
+      window.removeEventListener('keydown', unlock, true);
+    };
   }, []);
+
   // Play the shuffle sound when a new round starts (entering DEALING phase).
   useEffect(() => {
     const phase = state?.phase;
-    if (phase === 'DEALING' && prevPhase.current !== 'DEALING' && shuffleAudio.current) {
-      try {
-        shuffleAudio.current.currentTime = 0;
-        shuffleAudio.current.play().catch(() => {});
-      } catch (_) {}
+    if (phase === 'DEALING' && prevPhase.current !== 'DEALING') {
+      playSound('shuffle', 2.0);
     }
     prevPhase.current = phase;
   }, [state?.phase]);
+
+  // Play click on discards / claims.
   useEffect(() => {
     const log = state?.event_log || [];
     if (log.length > prevLogLen.current) {
@@ -82,11 +124,8 @@ export function GamePage() {
         'discard', 'chi', 'peng',
         'gang_open', 'gang_concealed', 'gang_added',
       ]);
-      if (last && SOUND_KINDS.has(last.kind) && clickAudio.current) {
-        try {
-          clickAudio.current.currentTime = 0;
-          clickAudio.current.play().catch(() => { /* autoplay blocked until user gesture */ });
-        } catch (_) {}
+      if (last && SOUND_KINDS.has(last.kind)) {
+        playSound('click', 5.0);
       }
     }
     prevLogLen.current = log.length;
