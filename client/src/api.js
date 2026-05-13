@@ -50,6 +50,14 @@ export const startSession = async (code) => {
   });
 };
 
+export const startWithCpus = async (code) => {
+  return fetch(BASE_URL + '/start_with_cpus', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId(), code }),
+  });
+};
+
 export const authSocket = (code) => {
   socket.emit('auth', { player_id: playerId(), code });
 };

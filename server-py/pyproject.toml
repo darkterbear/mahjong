@@ -8,6 +8,7 @@ dependencies = [
   "uvicorn[standard]>=0.27",
   "python-socketio>=5.11",
   "numpy>=1.26",
+  "torch>=2.0",
 ]
 
 [project.optional-dependencies]

@@ -46,6 +46,7 @@ def build_state_update(
     cumulative_scores: list[int],
     round_wind_index: int,
     dealer_streak: int,
+    bot_seats: frozenset[int] = frozenset(),
 ) -> dict:
     """Return the JSON dict for `state_update` from viewer_seat's POV."""
     you_player = hand.game.players[viewer_seat]
@@ -108,12 +109,25 @@ def build_state_update(
             "declined_seats": list(hand.co_hu_declined),
         }
 
+    # Undo owner: normally the active seat; if that seat is a bot, walk CCW
+    # until we find a human seat.
+    active = _active_seat(hand)
+    undo_owner: Optional[int] = active
+    if active in bot_seats:
+        for offset in range(1, 5):
+            cand = (active + offset) % 4
+            if cand not in bot_seats:
+                undo_owner = cand
+                break
+        else:
+            undo_owner = None  # all-bot table (shouldn't happen)
+
     return {
         "phase": hand.phase.value,
         "round_wind": WIND_NAMES[round_wind_index],
         "dealer_seat": hand.dealer_seat,
         "dealer_streak": dealer_streak,
-        "current_turn_seat": _active_seat(hand),
+        "current_turn_seat": active,
         "you": you,
         "others": others,
         "wall": wall,
@@ -121,6 +135,7 @@ def build_state_update(
         "pending_claim_window": pending,
         "pending_co_hu": pending_co_hu,
         "can_undo": len(hand._snapshots) > 0,
+        "undo_owner_seat": undo_owner,
         "event_log": _redact_event_log(hand.event_log, viewer_seat),
     }
 

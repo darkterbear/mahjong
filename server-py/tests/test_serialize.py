@@ -313,3 +313,27 @@ def test_state_update_exposes_kong_eligible_tiles() -> None:
     )
     assert 0 in s["you"]["concealed_gang_tiles"]
     assert 1 in s["you"]["added_gang_tiles"]
+
+
+def test_undo_owner_skips_bots() -> None:
+    h = _setup_playing()
+    # Seat 0 is active (dealer in PRE_DICE → enter_playing makes it DISCARD for seat 0).
+    # Bots at seats 0 and 1, humans at 2 and 3.
+    s = build_state_update(
+        hand=h, viewer_seat=2, seats=["a", "b", "c", "d"],
+        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+        bot_seats=frozenset({0, 1}),
+    )
+    # Active seat is 0 (bot). Walk CCW: seat 1 (bot) → seat 2 (human).
+    assert s["undo_owner_seat"] == 2
+
+
+def test_undo_owner_is_active_human() -> None:
+    h = _setup_playing()
+    # No bots — undo owner should be the active seat (0).
+    s = build_state_update(
+        hand=h, viewer_seat=0, seats=["a", "b", "c", "d"],
+        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+        bot_seats=frozenset(),
+    )
+    assert s["undo_owner_seat"] == 0

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useHistory, useLocation } from 'react-router'
-import { socket, startSession } from '../api'
+import { socket, startSession, startWithCpus } from '../api'
 import './LobbyPage.scss'
 
 export function LobbyPage() {
@@ -43,7 +43,14 @@ export function LobbyPage() {
     <span id="code">Room code: {code}</span>
     { players.map(p => <p className={p === leader ? 'leader' : ''} key={p}>{p}</p>) }
     { players.length < 4
-      ? <p className="lobby-status">{players.length}/4 players</p>
+      ? <>
+          <p className="lobby-status">{players.length}/4 players</p>
+          { leader === username && (
+            <button onClick={() => startWithCpus(code)}>
+              Start with CPUs ({4 - players.length} bot{4 - players.length !== 1 ? 's' : ''})
+            </button>
+          )}
+        </>
       : leader === username
         ? <button onClick={() => startSession(code)}>Start Game</button>
         : <p className="lobby-status">Waiting for {leader} to start…</p>

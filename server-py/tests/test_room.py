@@ -78,3 +78,22 @@ def test_add_player_rejects_duplicate_player_id() -> None:
     r.add_player(p1)
     with pytest.raises(ValueError):
         r.add_player(p2)
+
+
+def test_room_bot_seat_detection() -> None:
+    Room.reset_registry()
+    r = Room.create()
+    r.add_player(Player(player_id="h1", username="alice"))
+    r.add_player(Player(player_id="b1", username="Tilesworth", is_bot=True))
+    r.add_player(Player(player_id="h2", username="bob"))
+    r.add_player(Player(player_id="b2", username="Honoraburu", is_bot=True))
+    r.start_session(seed=0)
+    bots = set(r.bot_seats())
+    humans = set(r.human_seats())
+    assert len(bots) == 2 and len(humans) == 2
+    assert bots.isdisjoint(humans)
+    assert bots | humans == {0, 1, 2, 3}
+    for seat in bots:
+        assert r.is_bot_seat(seat) is True
+    for seat in humans:
+        assert r.is_bot_seat(seat) is False

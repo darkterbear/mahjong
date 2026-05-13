@@ -84,7 +84,7 @@ export function ActionBar({ state }) {
               {LABELS[a] || a}
             </button>
           ))}
-          {state.can_undo && state.current_turn_seat === state.you.seat && (
+          {state.can_undo && state.undo_owner_seat === state.you.seat && (
             <button className="undo" onClick={() => undo()}>Undo</button>
           )}
         </>

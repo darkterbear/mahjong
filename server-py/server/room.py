@@ -14,6 +14,7 @@ class Player:
     player_id: str       # session id from cookie/socket auth
     username: str
     sid: Optional[str] = None  # current socket sid (None if disconnected)
+    is_bot: bool = False
 
 
 class Room:
@@ -82,3 +83,20 @@ class Room:
             raise RuntimeError("no session")
         pid = self.session.seats[seat]
         return next(p for p in self.players if p.player_id == pid)
+
+    def is_bot_seat(self, seat: int) -> bool:
+        if not self.session:
+            return False
+        pid = self.session.seats[seat]
+        player = next((p for p in self.players if p.player_id == pid), None)
+        return bool(player and player.is_bot)
+
+    def bot_seats(self) -> list[int]:
+        if not self.session:
+            return []
+        return [s for s in range(4) if self.is_bot_seat(s)]
+
+    def human_seats(self) -> list[int]:
+        if not self.session:
+            return []
+        return [s for s in range(4) if not self.is_bot_seat(s)]

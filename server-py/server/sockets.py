@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 import time
 from typing import Optional
 
 from server.app import sio
 from server.protocol import ClientEvent, ServerEvent, HandPhase
 from server.room import Room
-from server.serialize import build_state_update
+from server.serialize import build_state_update, _active_seat
 from server.session import build_hand_result_from_game
 from subterfuge.types import TurnPhase, Wind
 
@@ -70,6 +71,17 @@ async def on_roll_dice(sid: str, data: dict) -> None:
         hand = room.session.start_new_hand()
     seat = room.session.seats.index(player.player_id)
     if seat != hand.dealer_seat:
+        return
+    await _perform_roll_dice(room)
+
+
+async def _perform_roll_dice(room: Room) -> None:
+    """Roll dice, deal, resolve flowers. Can be called by human handler or bot."""
+    s = room.session
+    if not s:
+        return
+    hand = s.current_hand
+    if not hand or hand.phase != HandPhase.PRE_DICE:
         return
     hand.snapshot()
     dice = hand.roll_dice()
@@ -305,10 +317,21 @@ async def on_undo(sid: str, data: dict) -> None:
     hand = room.session.current_hand
     if not hand: return
     seat = room.session.seats.index(player.player_id)
-    expected_seat = hand.game.current_player
-    if hand.game.phase.name == "CLAIM_WINDOW" and hand.game.last_discard_player is not None:
-        expected_seat = (hand.game.last_discard_player + 1) % 4
-    if seat != expected_seat:
+    # Undo is allowed for the undo_owner (may be a human whose turn it isn't,
+    # if the active player is a bot).
+    from server.serialize import _active_seat as _as
+    active = _as(hand)
+    bot_seats_set = set(room.bot_seats())
+    undo_owner = active
+    if active in bot_seats_set:
+        for offset in range(1, 5):
+            cand = (active + offset) % 4
+            if cand not in bot_seats_set:
+                undo_owner = cand
+                break
+        else:
+            undo_owner = None
+    if seat != undo_owner:
         return
     try:
         hand.undo()
@@ -350,6 +373,7 @@ async def _broadcast_state(room: Room) -> None:
     for pid in s.seats:
         match = next((p.username for p in room.players if p.player_id == pid), "?")
         seats_usernames.append(match)
+    bot_seats_set = set(room.bot_seats())
     for seat_idx, pid in enumerate(s.seats):
         player = next((p for p in room.players if p.player_id == pid), None)
         if player and player.sid:
@@ -360,8 +384,10 @@ async def _broadcast_state(room: Room) -> None:
                 cumulative_scores=s.cumulative_scores,
                 round_wind_index=s.round_wind_index,
                 dealer_streak=s.dealer_streak,
+                bot_seats=frozenset(bot_seats_set),
             )
             await sio.emit(ServerEvent.STATE_UPDATE.value, payload, to=player.sid)
+    await _maybe_schedule_bot_turn(room)
 
 
 async def _settle_single_or_multi(room: Room) -> None:
@@ -440,6 +466,201 @@ async def _settle_flower_special_win(room: Room, hand, special: tuple[int, int |
     hand.phase = HandPhase.SETTLEMENT
     hand.game.phase = _TP.GAME_OVER
     await _settle_single_or_multi(room)
+
+
+async def _maybe_schedule_bot_turn(room: Room) -> None:
+    """If the next-to-act seat is a bot, schedule a bot action after a 2s delay."""
+    if not room.session or not room.session.current_hand:
+        return
+    hand = room.session.current_hand
+    if hand.phase in (HandPhase.SETTLEMENT,):
+        return
+
+    active = _active_seat(hand)
+
+    # PRE_DICE: bot dealer should auto-roll.
+    if hand.phase == HandPhase.PRE_DICE and active == hand.dealer_seat and room.is_bot_seat(active):
+        token = (hand, hand.phase)
+
+        async def _bot_roll():
+            await asyncio.sleep(2.0)
+            if room.session is None or room.session.current_hand is not hand:
+                return
+            if hand.phase != HandPhase.PRE_DICE:
+                return
+            if (hand, hand.phase) != token:
+                return
+            await _perform_roll_dice(room)
+
+        asyncio.create_task(_bot_roll())
+        return
+
+    # Claim-window bots (robbing-kong or normal): handle pending responses.
+    if hand.game.phase == TurnPhase.CLAIM_WINDOW:
+        # Robbing-kong window — handle bots still pending.
+        if hand.game._pending_gang_add is not None:
+            pending_bots = [s for s in hand.robbing_kong_pending if room.is_bot_seat(s)]
+            for bot_seat in pending_bots:
+                _schedule_robbing_kong_bot(room, hand, bot_seat)
+            return
+        # co-hu window — handle bots still pending.
+        if hand.co_hu_active:
+            pending_bots = [s for s in hand.co_hu_remaining if room.is_bot_seat(s)]
+            for bot_seat in pending_bots:
+                _schedule_co_hu_bot(room, hand, bot_seat)
+            return
+
+    if not room.is_bot_seat(active):
+        return
+
+    token = (hand, active, len(hand.event_log))
+
+    async def _do_bot_turn():
+        await asyncio.sleep(2.0)
+        if room.session is None or room.session.current_hand is not hand:
+            return
+        if (hand, _active_seat(hand), len(hand.event_log)) != token:
+            return
+        await _execute_bot_action(room, active)
+
+    asyncio.create_task(_do_bot_turn())
+
+
+def _schedule_robbing_kong_bot(room: Room, hand, bot_seat: int) -> None:
+    """Schedule a bot's robbing-kong pass (bots never rob for simplicity)."""
+    token = (hand, len(hand.event_log), bot_seat)
+
+    async def _do():
+        await asyncio.sleep(2.0)
+        if room.session is None or room.session.current_hand is not hand:
+            return
+        if (hand, len(hand.event_log), bot_seat) != token:
+            return
+        if bot_seat not in hand.robbing_kong_pending:
+            return
+        hand.snapshot()
+        all_passed = hand.record_robbing_kong_pass(bot_seat)
+        if all_passed:
+            hand.close_claim_window_no_winner()
+        await _broadcast_state(room)
+
+    asyncio.create_task(_do())
+
+
+def _schedule_co_hu_bot(room: Room, hand, bot_seat: int) -> None:
+    """Schedule a bot's co-hu response. Bot always passes (declines)."""
+    token = (hand, len(hand.event_log), bot_seat)
+
+    async def _do():
+        await asyncio.sleep(2.0)
+        if room.session is None or room.session.current_hand is not hand:
+            return
+        if (hand, len(hand.event_log), bot_seat) != token:
+            return
+        if not hand.co_hu_active or bot_seat not in hand.co_hu_remaining:
+            return
+        hand.snapshot()
+        hand.record_co_hu_response(bot_seat, accept=False)
+        if hand.co_hu_complete():
+            await _finalize_co_hu(room)
+        else:
+            await _broadcast_state(room)
+
+    asyncio.create_task(_do())
+
+
+async def _execute_bot_action(room: Room, seat: int) -> None:
+    """Run one bot action turn: query model, apply action, broadcast."""
+    s = room.session
+    if not s:
+        return
+    hand = s.current_hand
+    if hand is None:
+        return
+
+    from subterfuge.env.action_space import index_to_action
+    from subterfuge.types import ActionType
+    from server.bot import choose_action_index
+
+    try:
+        idx = choose_action_index(hand.game, seat)
+        action = index_to_action(idx, seat, hand.game)
+    except Exception as e:
+        print(f"[bot] seat={seat} error choosing action: {e}", file=sys.stderr)
+        return
+
+    hand.snapshot()
+    atype = action.action_type
+
+    try:
+        if atype == ActionType.DRAW:
+            # Subterfuge may return a DRAW action; use draw_front.
+            if hand.game.phase == TurnPhase.CLAIM_WINDOW:
+                hand.close_claim_window_no_winner()
+            hand.draw_front()
+            if hand.phase.value == "SETTLEMENT":
+                await _settle_single_or_multi(room)
+                return
+        elif atype == ActionType.DISCARD:
+            hand.apply_discard(action.tile)
+            LAST_DISCARD_TIME[room.code] = time.monotonic()
+        elif atype == ActionType.CHI:
+            # chi_tiles is the two tiles from hand; reconstruct from the meld.
+            chi_hand_tiles = None
+            if action.meld is not None:
+                chi_hand_tiles = [t for t in action.meld.tiles if t != action.tile][:2]
+            elif action.chi_tiles is not None:
+                chi_hand_tiles = list(action.chi_tiles)
+            hand.apply_claim(seat, "chi", tiles=chi_hand_tiles)
+        elif atype == ActionType.PENG:
+            hand.apply_claim(seat, "peng")
+        elif atype == ActionType.GANG_CALL:
+            hand.apply_claim(seat, "gang_open")
+            hand.must_draw_back = True
+        elif atype == ActionType.GANG_SELF:
+            hand.declare_concealed_gang(action.tile)
+        elif atype == ActionType.GANG_ADD:
+            hand.declare_added_gang(action.tile)
+            tile = hand.game.last_discard
+            declarer = hand.game.last_discard_player
+            eligible = [s2 for s2 in range(4) if s2 != declarer and hand.can_hu_on_tile(s2, tile)]
+            if not eligible:
+                hand.close_claim_window_no_winner()
+            else:
+                hand.start_robbing_kong_window(eligible)
+        elif atype == ActionType.HU:
+            if hand.game.phase == TurnPhase.CLAIM_WINDOW:
+                # Check for co-hu (other human can also hu).
+                others = []
+                tile = hand.game.last_discard
+                discarder = hand.game.last_discard_player
+                for s2 in range(4):
+                    if s2 == seat or s2 == discarder:
+                        continue
+                    if hand.can_hu_on_tile(s2, tile):
+                        others.append(s2)
+                if others:
+                    hand.start_co_hu_window(seat)
+                    await _broadcast_state(room)
+                    return
+                hand.apply_claim(seat, "hu")
+            else:
+                hand.declare_self_hu()
+            if hand.phase.value == "SETTLEMENT":
+                await _settle_single_or_multi(room)
+                return
+        elif atype == ActionType.PASS:
+            # Pass during claim window: skip.
+            pass
+        else:
+            # Unknown action type — do nothing.
+            print(f"[bot] seat={seat} unknown action type {atype}", file=sys.stderr)
+    except Exception as e:
+        print(f"[bot] seat={seat} error executing action {atype}: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+
+    await _broadcast_state(room)
 
 
 async def _finalize_co_hu(room: Room) -> None:
