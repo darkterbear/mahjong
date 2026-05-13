@@ -13,6 +13,20 @@ from server.wall_view import flat_to_position, TILES_PER_SEAT, TOTAL_WALL_TILES
 WIND_NAMES = ["EAST", "SOUTH", "WEST", "NORTH"]
 
 
+_PRIVATE_DRAW_KINDS = {"draw_front", "draw_back"}
+
+
+def _redact_event_log(event_log: list[dict], viewer_seat: int) -> list[dict]:
+    """Hide the tile id of other players' draws — only the drawer sees what they drew."""
+    out: list[dict] = []
+    for e in event_log:
+        if e.get("kind") in _PRIVATE_DRAW_KINDS and e.get("seat") != viewer_seat:
+            out.append({k: v for k, v in e.items() if k != "tile"})
+        else:
+            out.append(dict(e))
+    return out
+
+
 def _active_seat(hand: Hand) -> int:
     if hand.phase in (HandPhase.PRE_DICE, HandPhase.FLOWER_RESOLUTION):
         return hand.dealer_seat
@@ -107,7 +121,7 @@ def build_state_update(
         "pending_claim_window": pending,
         "pending_co_hu": pending_co_hu,
         "can_undo": len(hand._snapshots) > 0,
-        "event_log": list(hand.event_log),
+        "event_log": _redact_event_log(hand.event_log, viewer_seat),
     }
 
 
