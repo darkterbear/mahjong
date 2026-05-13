@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router';
 import { socket, authSocket } from '../api';
 import { Scoreboard } from './game/Scoreboard';
@@ -47,6 +47,33 @@ export function GamePage() {
       setSettlement(null);
     }
   }, [state?.phase]);
+
+  // Click sound for tactile events (discard, chi, peng, gang variants).
+  const clickAudio = useRef(null);
+  const prevLogLen = useRef(0);
+  useEffect(() => {
+    if (!clickAudio.current) {
+      clickAudio.current = new Audio('/sounds/click.wav');
+      clickAudio.current.preload = 'auto';
+    }
+  }, []);
+  useEffect(() => {
+    const log = state?.event_log || [];
+    if (log.length > prevLogLen.current) {
+      const last = log[log.length - 1];
+      const SOUND_KINDS = new Set([
+        'discard', 'chi', 'peng',
+        'gang_open', 'gang_concealed', 'gang_added',
+      ]);
+      if (last && SOUND_KINDS.has(last.kind) && clickAudio.current) {
+        try {
+          clickAudio.current.currentTime = 0;
+          clickAudio.current.play().catch(() => { /* autoplay blocked until user gesture */ });
+        } catch (_) {}
+      }
+    }
+    prevLogLen.current = log.length;
+  }, [state?.event_log?.length]);
 
   if (!state) {
     return <div id="game-page"><p>Connecting…</p></div>;
