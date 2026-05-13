@@ -366,6 +366,7 @@ async def _broadcast_state(room: Room) -> None:
 
 async def _settle_single_or_multi(room: Room) -> None:
     """For single-winner Hu / self-Hu / wall-exhaustion. Wraps the GameResult."""
+    import sys
     s = room.session
     hand = s.current_hand
     gr = hand.game.result
@@ -374,6 +375,12 @@ async def _settle_single_or_multi(room: Room) -> None:
         return
     hand.clear_snapshots()
     s.record_settlement(hr)
+    print(
+        f"[settle] winner={hr.winner_seat} winning_tile={hr.winning_tile} "
+        f"is_self_draw={hr.is_self_draw} payments={hr.payments} "
+        f"cumulative={s.cumulative_scores} seats={s.seats}",
+        file=sys.stderr,
+    )
     await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
         "winners": [
             {

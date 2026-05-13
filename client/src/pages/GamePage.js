@@ -28,7 +28,26 @@ export function GamePage() {
     if (code) authSocket(code);
 
     socket.on('state_update', (s) => setState(s));
-    socket.on('dice_rolled', (d) => { setDice(d); setTimeout(() => setDice(null), 1500); });
+    socket.on('dice_rolled', (d) => {
+      setDice(d);
+      setTimeout(() => setDice(null), 1500);
+      // Tile-shuffle sound fires here (start of a new round).
+      if (shuffleAudio.current && audioCtx.current) {
+        try {
+          const ctx = audioCtx.current;
+          if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+          const buf = buffers.current.shuffle;
+          if (buf) {
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const gain = ctx.createGain();
+            gain.gain.value = 2.0;
+            src.connect(gain).connect(ctx.destination);
+            src.start(0);
+          }
+        } catch (_) {}
+      }
+    });
     socket.on('dealing_step', (d) => setDealing(d));
     socket.on('hand_settlement', (s) => setSettlement(s));
     socket.on('disconnect', () => history.replace('/'));
@@ -106,14 +125,7 @@ export function GamePage() {
     };
   }, []);
 
-  // Play the shuffle sound when a new round starts (entering DEALING phase).
-  useEffect(() => {
-    const phase = state?.phase;
-    if (phase === 'DEALING' && prevPhase.current !== 'DEALING') {
-      playSound('shuffle', 2.0);
-    }
-    prevPhase.current = phase;
-  }, [state?.phase]);
+  // (Shuffle sound is fired from the dice_rolled socket handler above.)
 
   // Play click on discards / claims.
   useEffect(() => {
