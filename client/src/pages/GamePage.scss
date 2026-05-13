@@ -13,15 +13,31 @@ $accent: #FF4B12;
   overflow: hidden;
 }
 
-#hand-header {
+#status-panel {
   position: absolute;
-  top: 0.75rem;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 2rem;
-  font-size: 14px;
+  top: 1rem;
+  left: 1rem;
+  width: 200px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px 12px;
+  border-radius: 8px;
   z-index: 5;
+  font-size: 12px;
+  line-height: 1.5;
+
+  h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .status-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px;
+  }
+  .status-row .label { color: #aaa; }
+  .status-row .value { color: #eee; font-weight: 600; }
+  .status-row .value.turn-self { color: #5dd57a; }
 }
 
 .highlight {

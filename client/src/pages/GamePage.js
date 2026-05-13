@@ -149,17 +149,31 @@ export function GamePage() {
 
   return (
     <div id="game-page">
-      <header id="hand-header">
-        <span>Round wind: <strong>{state.round_wind}</strong></span>
-        <span>Dealer streak: <strong>{state.dealer_streak}</strong></span>
-        <span style={{marginLeft: '2rem', color: '#aaa', fontSize: '12px'}}>
-          phase=<strong>{state.phase}</strong> | turn=
-          <strong>{state.current_turn_seat === state.you.seat ? 'YOU' : `seat ${state.current_turn_seat}`}</strong>
-          {' | actions=['}
-          <strong>{(state.available_actions || []).join(', ') || '(none)'}</strong>
-          {']'}
-        </span>
-      </header>
+      <aside id="status-panel">
+        <h4>Status</h4>
+        <div className="status-row">
+          <span className="label">Round:</span>
+          <span className="value">{state.round_wind}</span>
+        </div>
+        <div className="status-row">
+          <span className="label">Streak:</span>
+          <span className="value">{state.dealer_streak}</span>
+        </div>
+        <div className="status-row">
+          <span className="label">Phase:</span>
+          <span className="value">{state.phase}</span>
+        </div>
+        <div className="status-row">
+          <span className="label">Turn:</span>
+          <span className={`value ${state.current_turn_seat === state.you.seat ? 'turn-self' : ''}`}>
+            {state.current_turn_seat === state.you.seat ? 'YOU' : `seat ${state.current_turn_seat}`}
+          </span>
+        </div>
+        <div className="status-row">
+          <span className="label">Actions:</span>
+          <span className="value">{(state.available_actions || []).join(', ') || '(none)'}</span>
+        </div>
+      </aside>
 
       {state.pending_claim_window?.is_robbing_kong_window && (
         <div className="robbing-kong-banner">

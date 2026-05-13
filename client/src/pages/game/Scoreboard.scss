@@ -1,6 +1,6 @@
 .scoreboard {
   position: absolute;
-  top: 1rem;
+  top: calc(1rem + 150px);   /* sit below the status panel */
   left: 1rem;
   width: 200px;
   background: rgba(0,0,0,0.4);
