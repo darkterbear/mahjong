@@ -68,6 +68,9 @@ class Hand:
         self.pending_flowers: list[list[int]] = [[], [], [], []]
         self.wall_rotation_offset: int = 0
         self.claim_window: Optional[ClaimWindow] = None
+        # Seats that won this hand (filled in when hu fires; used by serialize
+        # to expose each winner's full hand at settlement time).
+        self.winner_seats: list[int] = []
 
         # Player-visible event log: list of {seat, kind, tile?, extra?} dicts.
         # Kinds: draw_front, draw_back, discard, declare_flower, peng, chi,
@@ -324,6 +327,7 @@ class Hand:
                 self.game.players[discarder].discards.pop()
             kind = "robbing_kong_hu" if self.game._is_robbing_kong else "hu"
             self._log_event(seat, kind, tile=tile)
+            self.winner_seats = [seat]
             self.phase = HandPhase.SETTLEMENT
             return
 
@@ -400,6 +404,7 @@ class Hand:
             # Restore baseline for the next winner.
             self.game = copy.deepcopy(baseline_game)
         # After the loop we're back at baseline; advance to SETTLEMENT.
+        self.winner_seats = list(winner_seats)
         self.phase = HandPhase.SETTLEMENT
         return results
 
@@ -503,6 +508,7 @@ class Hand:
         )
         self.game.step(action)
         self._log_event(seat, "hu", tile=hu_tile, self_draw=True)
+        self.winner_seats = [seat]
         self.phase = HandPhase.SETTLEMENT
 
     def close_claim_window_no_winner(self) -> None:

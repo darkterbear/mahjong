@@ -15,15 +15,23 @@ export function CenterDiscards({ state }) {
       return { seat: o.seat, side, discards: o.discards || [] };
     }),
   ];
+  const highlightTile = state.active_discard ? state.active_discard.tile : null;
   return (
-    <div className="center-discards">
-      {piles.map((p) => (
-        <div key={p.seat} className={`pile pile-${p.side}`}>
-          {p.discards.map((t, i) => (
-            <img key={i} className="discard-tile" src={tileImageUrl(t)} alt="" />
-          ))}
+    <>
+      <div className="center-discards">
+        {piles.map((p) => (
+          <div key={p.seat} className={`pile pile-${p.side}`}>
+            {p.discards.map((t, i) => (
+              <img key={i} className="discard-tile" src={tileImageUrl(t)} alt="" />
+            ))}
+          </div>
+        ))}
+      </div>
+      {highlightTile != null && (
+        <div className="discard-highlight">
+          <img src={tileImageUrl(highlightTile)} alt="" />
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 }

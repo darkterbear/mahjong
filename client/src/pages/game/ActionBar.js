@@ -96,6 +96,10 @@ export function ActionBar({ state }) {
 
     const handleClaimWindowClick = (opt) => {
       if (opt === 'chi') {
+        // Opening the picker should suspend the auto-pass timer until the
+        // player either picks a combo or cancels — otherwise they can be
+        // auto-passed mid-selection.
+        if (!youWaiting) claimWait(true);
         setPicker('chi');
       } else {
         claimDecision(opt);
@@ -127,6 +131,10 @@ export function ActionBar({ state }) {
 
   // Chi picker (within claim window).
   if (inClaimWindow && picker === 'chi') {
+    // Closing the picker keeps Wait on so the user returns to the regular
+    // claim-window buttons and can still peng/hu/etc. — they explicitly press
+    // "Stop waiting" if they're done deciding.
+    const onCancelChi = () => setPicker(null);
     return (
       <div className="action-bar">
         <div className="kong-picker">
@@ -146,7 +154,7 @@ export function ActionBar({ state }) {
               </span>
             ))
           )}
-          <button className="cancel" onClick={() => setPicker(null)}>Cancel</button>
+          <button className="cancel" onClick={onCancelChi}>Cancel</button>
         </div>
       </div>
     );

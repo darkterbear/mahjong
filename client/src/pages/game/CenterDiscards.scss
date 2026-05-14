@@ -57,3 +57,21 @@
   height: auto;
   margin: 0 -2px;
 }
+
+/* Highlight of the just-discarded tile during the 2s claim window — sits
+ * directly below the discard grid, can overlap the wall (intentional). */
+.discard-highlight {
+  position: absolute;
+  top: calc(50% + 210px);  /* grid is 400px centered → bottom edge + 10px */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
+
+  img {
+    width: 96px;   /* 3x the 32px discard tile */
+    height: auto;
+    display: block;
+  }
+}

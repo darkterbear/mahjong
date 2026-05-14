@@ -17,6 +17,7 @@ class HandResult:
     breakdown: dict[str, int]
     total: int
     winning_tile: Optional[int] = None
+    discarder_seat: Optional[int] = None  # seat of the player who fed the win (None for self-draw/draw)
 
 
 class Session:
@@ -115,6 +116,7 @@ def build_hand_result_from_game(gr) -> HandResult:
             total=0,
             winning_tile=None,
         )
+    discarder = getattr(gr, "discarder", -1)
     return HandResult(
         winner_seat=gr.winner,
         is_self_draw=gr.is_self_draw,
@@ -123,4 +125,5 @@ def build_hand_result_from_game(gr) -> HandResult:
         breakdown=dict(gr.tai_breakdown),
         total=gr.tai,
         winning_tile=gr.winning_tile if gr.winning_tile != -1 else None,
+        discarder_seat=None if gr.is_self_draw or discarder == -1 else discarder,
     )

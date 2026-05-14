@@ -2,19 +2,22 @@
   width: 100%;
   background: rgba(0, 0, 0, 0.4);
   color: #eee;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  /* font-size is the unscaled value; #left-rail's transform: scale(0.65)
+   * visually shrinks the rendered text below browser min-font-size limits. */
+  font-size: 14px;
+  box-sizing: border-box;
 
   h4 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: 20px;
     font-weight: 600;
   }
 }
 
 .event-log-scroll {
-  max-height: 120px;          /* about 5 lines */
+  max-height: 180px;          /* unscaled; visually ~117px */
   overflow-y: auto;
 
   /* Slim scrollbar so it doesn't dominate. */
@@ -25,14 +28,21 @@
 .event-line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 4px;
-  padding: 2px 0;
+  padding: 3px 0;
   border-bottom: 1px solid rgba(255,255,255,0.06);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 14px;
+  line-height: 1.3;
+  word-break: break-word;
 }
 .event-line:last-child { border-bottom: none; }
 .event-actor { font-weight: 600; }
 .event-verb { color: #aaa; }
 .event-tile { width: 22px; height: auto; }
+.event-tiles {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.event-tile.chi-tile { width: 16px; }

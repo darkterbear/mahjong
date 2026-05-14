@@ -9,7 +9,6 @@ export function Scoreboard({ state }) {
         {seats.map((s) => (
           <li key={s.seat}>
             <span className="name">{s.username || 'You'}</span>
-            <span className="wind">{s.seat_wind}</span>
             <span className={`score ${s.score >= 0 ? 'pos' : 'neg'}`}>{s.score >= 0 ? '+' : ''}{s.score}</span>
           </li>
         ))}

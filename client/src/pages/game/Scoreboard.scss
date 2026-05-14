@@ -1,17 +1,20 @@
 .scoreboard {
   width: 100%;
   background: rgba(0,0,0,0.4);
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  /* font-size is the unscaled value; #left-rail's transform: scale(0.65)
+   * visually shrinks the rendered text below browser min-font-size limits. */
+  font-size: 14px;
+  box-sizing: border-box;
 
-  h3 { margin: 0 0 8px; font-size: 14px; }
+  h3 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
   ul { list-style: none; padding: 0; margin: 0; }
   li {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto;
     gap: 8px;
-    padding: 4px 0;
+    padding: 3px 0;
   }
   .score.pos { color: #5dd57a; }
   .score.neg { color: #ff8888; }

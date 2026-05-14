@@ -183,6 +183,13 @@ async def on_concealed_gang(sid: str, data: dict) -> None:
     hand = room.session.current_hand
     if not hand: return
     hand.declare_concealed_gang(data["tile_id"])
+    # Replacement draw is mandatory — auto-pull from the back rather than
+    # prompting the player for a separate confirmation.
+    if hand.must_draw_back:
+        hand.draw_back()
+        if hand.phase.value == "SETTLEMENT":
+            await _settle_single_or_multi(room)
+            return
     await _broadcast_state(room)
 
 
@@ -328,15 +335,23 @@ def _bot_claim_decision(hand, seat: int) -> dict:
 
 
 async def _auto_pass_after(room: Room, hand, seat: int, delay: float) -> None:
+    """Auto-pass *seat* once the grace window has elapsed AND they're not waiting.
+
+    Waits `delay` seconds first, then polls while the player is in waiters so
+    that releasing Wait (or cancelling out of the chi picker) still triggers
+    the auto-pass — otherwise the seat would sit in pending forever.
+    """
     await asyncio.sleep(delay)
-    if room.session is None or room.session.current_hand is not hand:
-        return
-    if hand.claim_window is None or seat not in hand.claim_window.pending_seats:
-        return
-    if seat in hand.claim_window.waiters:
-        return  # they pressed Wait — skip auto-pass
-    hand.record_claim_decision(seat, {"action": "pass"})
-    await _broadcast_state(room)
+    while True:
+        if room.session is None or room.session.current_hand is not hand:
+            return
+        if hand.claim_window is None or seat not in hand.claim_window.pending_seats:
+            return
+        if seat not in hand.claim_window.waiters:
+            hand.record_claim_decision(seat, {"action": "pass"})
+            await _broadcast_state(room)
+            return
+        await asyncio.sleep(0.2)
 
 
 async def _resolve_claim_window_when_ready(room: Room, hand) -> None:
@@ -389,8 +404,19 @@ async def _resolve_claim_window(room: Room) -> None:
             await _settle_single_or_multi(room)
             return
         await _broadcast_state(room)
-        # If the claimer used gang_open, they need a draw_back.
-        await _maybe_schedule_bot_turn(room)
+        # After gang_open the claimer owes a replacement draw. Auto-draw it
+        # (for both humans and bots) so nobody has to click "Draw (back)".
+        if hand.must_draw_back:
+            if room.is_bot_seat(seat):
+                await _maybe_schedule_bot_turn(room)
+            else:
+                hand.draw_back()
+                if hand.phase.value == "SETTLEMENT":
+                    await _settle_single_or_multi(room)
+                    return
+                await _broadcast_state(room)
+        else:
+            await _maybe_schedule_bot_turn(room)
         return
 
     # No claims — close window, advance to next player's draw.
@@ -444,6 +470,9 @@ async def _emit_multi_winner_settlement(room: Room, winner_seats: list[int]) -> 
     for hr in hr_list:
         for i in range(4):
             agg[i] += hr.payments[i]
+    discarder_seat = next((hr.discarder_seat for hr in hr_list if hr.discarder_seat is not None), None)
+    next_dealer = s.next_hand_dealer_seat()
+    auto_advance = 10.0 if room.is_bot_seat(next_dealer) else None
     await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
         "winners": [
             {"seat": hr.winner_seat, "winning_tile": hr.winning_tile,
@@ -452,11 +481,41 @@ async def _emit_multi_winner_settlement(room: Room, winner_seats: list[int]) -> 
         ],
         "is_draw": False,
         "source": "discard",
+        "discarder_seat": discarder_seat,
         "payments": agg,
         "cumulative": s.cumulative_scores,
-        "next_dealer_seat": s.next_hand_dealer_seat(),
+        "next_dealer_seat": next_dealer,
+        "auto_advance_seconds": auto_advance,
     }, room=room.code)
     await _broadcast_state(room)
+    if auto_advance is not None:
+        await _schedule_next_hand_auto_advance(room, auto_advance)
+
+
+async def _schedule_next_hand_auto_advance(room: Room, delay: float) -> None:
+    """If the next dealer is a bot, advance to the next hand after `delay` seconds.
+
+    Snapshots the current Hand so a manual advance (or another settlement)
+    in the meantime cancels this one without firing.
+    """
+    if room.session is None or room.session.current_hand is None:
+        return
+    hand_token = room.session.current_hand
+
+    async def _advance():
+        await asyncio.sleep(delay)
+        if room.session is None or room.session.current_hand is not hand_token:
+            return
+        # Confirm still in SETTLEMENT and the dealer is still a bot.
+        if hand_token.phase != HandPhase.SETTLEMENT:
+            return
+        next_dealer = room.session.next_hand_dealer_seat()
+        if not room.is_bot_seat(next_dealer):
+            return
+        room.session.start_new_hand()
+        await _broadcast_state(room)
+
+    asyncio.create_task(_advance())
 
 
 # ---- helpers ---------------------------------------------------------------
@@ -514,6 +573,8 @@ async def _settle_single_or_multi(room: Room) -> None:
         f"cumulative={s.cumulative_scores} seats={s.seats}",
         file=sys.stderr,
     )
+    next_dealer = s.next_hand_dealer_seat()
+    auto_advance = 10.0 if room.is_bot_seat(next_dealer) else None
     await sio.emit(ServerEvent.HAND_SETTLEMENT.value, {
         "winners": [
             {
@@ -525,13 +586,17 @@ async def _settle_single_or_multi(room: Room) -> None:
         ] if hr.winner_seat is not None else [],
         "is_draw": hr.is_draw,
         "source": "self" if hr.is_self_draw else "discard",
+        "discarder_seat": hr.discarder_seat,
         "payments": hr.payments,
         "cumulative": s.cumulative_scores,
-        "next_dealer_seat": s.next_hand_dealer_seat(),
+        "next_dealer_seat": next_dealer,
+        "auto_advance_seconds": auto_advance,
     }, room=room.code)
     # Broadcast updated state so the scoreboard reflects the new cumulative
     # scores while the settlement modal is shown.
     await _broadcast_state(room)
+    if auto_advance is not None:
+        await _schedule_next_hand_auto_advance(room, auto_advance)
 
 
 async def _settle_flower_special_win(room: Room, hand, special: tuple[int, int | None]) -> None:
@@ -609,6 +674,13 @@ async def _maybe_schedule_bot_turn(room: Room) -> None:
     if not room.is_bot_seat(active):
         return
 
+    # Only schedule normal turns once we're actually in PLAYING. Earlier phases
+    # (DEALING, FLOWER_RESOLUTION) still leave subterfuge's game.phase at DRAW
+    # with an all-false action mask — the model's fallback would then pick
+    # DISCARD tile 0, illegally discarding a tile from the dealer's hand.
+    if hand.phase != HandPhase.PLAYING:
+        return
+
     # Bot's normal turn (draw + discard). No pre-delay — the 2s claim window
     # that gates each discard already gives humans time to interrupt.
     # A tiny 0.3s pace makes successive bot turns feel less jarring without
@@ -618,6 +690,8 @@ async def _maybe_schedule_bot_turn(room: Room) -> None:
     async def _do_bot_turn():
         await asyncio.sleep(0.3)
         if room.session is None or room.session.current_hand is not hand:
+            return
+        if hand.phase != HandPhase.PLAYING or hand.claim_window is not None:
             return
         if (hand, _active_seat(hand), len(hand.event_log)) != token:
             return
@@ -634,10 +708,34 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
     hand = s.current_hand
     if hand is None:
         return
+    # Defense in depth: don't act if we're not in PLAYING phase. The mask is
+    # all-false during DRAW/DEALING/FLOWER_RESOLUTION, and the model's fallback
+    # would otherwise pick DISCARD tile 0 and corrupt the dealer's hand.
+    if hand.phase != HandPhase.PLAYING or hand.claim_window is not None:
+        return
 
     from subterfuge.env.action_space import index_to_action
-    from subterfuge.types import ActionType
+    from subterfuge.types import ActionType, TurnPhase
     from server.bot import choose_action_index
+
+    # Subterfuge's action space has no DRAW action — the engine expects the
+    # caller to pull from the wall before asking the model what to do. If
+    # we're sitting in DRAW phase, draw now and broadcast; the next bot turn
+    # will be scheduled by _broadcast_state to handle the resulting DISCARD.
+    if hand.game.phase == TurnPhase.DRAW:
+        try:
+            if hand.must_draw_back:
+                hand.draw_back()
+            else:
+                hand.draw_front()
+        except Exception as e:
+            print(f"[bot] seat={seat} error drawing: {e}", file=sys.stderr)
+            return
+        if hand.phase.value == "SETTLEMENT":
+            await _settle_single_or_multi(room)
+            return
+        await _broadcast_state(room)
+        return
 
     try:
         idx = choose_action_index(hand.game, seat)

@@ -13,14 +13,14 @@ from server.wall_view import flat_to_position, TILES_PER_SEAT, TOTAL_WALL_TILES
 WIND_NAMES = ["EAST", "SOUTH", "WEST", "NORTH"]
 
 
-_PRIVATE_DRAW_KINDS = {"draw_front", "draw_back"}
+_PRIVATE_TILE_KINDS = {"draw_front", "draw_back", "gang_concealed"}
 
 
 def _redact_event_log(event_log: list[dict], viewer_seat: int) -> list[dict]:
-    """Hide the tile id of other players' draws — only the drawer sees what they drew."""
+    """Hide tile ids that should be private to other players (draws + concealed gangs)."""
     out: list[dict] = []
     for e in event_log:
-        if e.get("kind") in _PRIVATE_DRAW_KINDS and e.get("seat") != viewer_seat:
+        if e.get("kind") in _PRIVATE_TILE_KINDS and e.get("seat") != viewer_seat:
             out.append({k: v for k, v in e.items() if k != "tile"})
         else:
             out.append(dict(e))
@@ -79,25 +79,47 @@ def build_state_update(
         "added_gang_tiles": list(you_player.can_gang_add()),
     }
 
+    # Once the hand is settled, every winner's hidden tiles are revealed to
+    # all viewers (so opponents can see how the win was constructed).
+    is_settled = hand.phase == HandPhase.SETTLEMENT
+    winner_seats = set(hand.winner_seats) if is_settled else set()
+
     others = []
     for offset in range(1, 4):
         s = (viewer_seat + offset) % 4
         op = hand.game.players[s]
-        others.append({
+        other_entry = {
             "seat": s,
             "seat_wind": _seat_wind_name(s, hand.dealer_seat),
             "username": seats[s],
             "hand_count": int(op.hand.sum()) + len(hand.pending_flowers[s]),
             "pending_flowers": list(hand.pending_flowers[s]),
-            "melds": [_meld_dict(m) for m in op.melds],
+            # Concealed gangs stay hidden during play and are revealed once
+            # the hand has settled.
+            "melds": [
+                _meld_dict(m, hide_concealed=not is_settled) for m in op.melds
+            ],
             "flowers": list(op.flowers),
             "discards": list(op.discards),
             "score": cumulative_scores[s],
-        })
+        }
+        if s in winner_seats:
+            other_entry["hand"] = _hand_as_list(op.hand) + list(hand.pending_flowers[s])
+        others.append(other_entry)
 
     wall = _wall_payload(hand)
     pending = _pending_claim_window(hand, viewer_seat, seats)
     available = [a.value for a in hand.available_actions(viewer_seat)]
+
+    # The just-discarded tile sitting in the claim window, visible to every
+    # viewer (including the discarder and players with no eligible claim).
+    # Drives the "big tile under the discard grid" indicator on the client.
+    active_discard = None
+    if hand.claim_window is not None and not hand.claim_window.is_robbing_kong:
+        active_discard = {
+            "tile": hand.claim_window.tile,
+            "discarder_seat": hand.claim_window.discarder,
+        }
 
     return {
         "phase": hand.phase.value,
@@ -110,6 +132,7 @@ def build_state_update(
         "wall": wall,
         "available_actions": available,
         "pending_claim_window": pending,
+        "active_discard": active_discard,
         "event_log": _redact_event_log(hand.event_log, viewer_seat),
     }
 
@@ -121,11 +144,27 @@ def _hand_as_list(hand_counts) -> list[int]:
     return out
 
 
-def _meld_dict(meld) -> dict:
+def _meld_dict(meld, *, hide_concealed: bool = False) -> dict:
+    """Build the meld payload for a viewer.
+
+    `hide_concealed`: when True, GANG_CONCEALED melds have their tiles
+    replaced with placeholders so opposing viewers can't read the tile id
+    during play. Once the hand settles, set this to False to reveal.
+    """
+    is_concealed_gang = meld.meld_type.name == "GANG_CONCEALED"
+    if hide_concealed and is_concealed_gang:
+        return {
+            "type": meld.meld_type.name,
+            "tiles": [-1, -1, -1, -1],
+            "concealed_hidden": True,
+            "source_seat": meld.source_player,
+            "source_tile": None,
+        }
     return {
         "type": meld.meld_type.name,
         "tiles": list(meld.tiles),
         "source_seat": meld.source_player,
+        "source_tile": getattr(meld, "source_tile", None),
     }
 
 

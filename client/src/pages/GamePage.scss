@@ -17,23 +17,31 @@ $accent: #FF4B12;
   position: absolute;
   top: 1rem;
   left: 1rem;
-  width: 200px;
+  width: 240px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   z-index: 5;
+
+  /* The whole rail is rendered at full CSS size then visually scaled. This
+   * bypasses browser minimum-font-size accessibility clamps (Chrome/Edge
+   * floors text at ~12px) so we can get genuinely tiny labels. */
+  transform: scale(0.65);
+  transform-origin: top left;
+
+  > * { box-sizing: border-box; }
 }
 
 #status-panel {
   background: rgba(0, 0, 0, 0.4);
   padding: 10px 12px;
   border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.35;
 
   h4 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: 20px;
     font-weight: 600;
   }
   .status-row {
