@@ -58,7 +58,7 @@
     font-size: 14px;
   }
   .picker-tile {
-    width: 48px;
+    width: var(--picker-tile-w);
     height: auto;
     cursor: pointer;
     transition: filter 0.15s, transform 0.15s;

@@ -3,8 +3,10 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 400px;
-  height: 400px;
+  /* Scale the centre grid with the viewport so 6 rows of discard tiles fit
+   * each quadrant on a 13" laptop without overlapping the wall. */
+  width: clamp(260px, 36vmin, 400px);
+  height: clamp(260px, 36vmin, 400px);
   pointer-events: none;
   z-index: 2;
 
@@ -53,16 +55,17 @@
 }
 
 .discard-tile {
-  width: 32px;
+  width: var(--discard-tile-w);
   height: auto;
-  margin: 0 -2px;
+  margin: 0 calc(var(--discard-tile-w) * -0.0625);
 }
 
 /* Highlight of the just-discarded tile during the 2s claim window — sits
  * directly below the discard grid, can overlap the wall (intentional). */
 .discard-highlight {
   position: absolute;
-  top: calc(50% + 210px);  /* grid is 400px centered → bottom edge + 10px */
+  /* Sit just below the bottom edge of the (responsive) discard grid. */
+  top: calc(50% + clamp(130px, 18vmin, 200px) + 10px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 4;
@@ -70,7 +73,7 @@
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
 
   img {
-    width: 96px;   /* 3x the 32px discard tile */
+    width: calc(var(--discard-tile-w) * 3);
     height: auto;
     display: block;
   }

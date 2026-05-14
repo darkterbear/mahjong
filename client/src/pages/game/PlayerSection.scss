@@ -39,9 +39,11 @@
 }
 
 .tile {
-  width: 56px;
+  width: var(--hand-tile-w);
   height: auto;
-  margin: 0 -6px;          /* overlap with neighbour */
+  /* Overlap with neighbour, scaled to ~11% of tile width so it stays
+   * visually consistent across screen sizes. */
+  margin: 0 calc(var(--hand-tile-w) * -0.11);
   cursor: pointer;
   transition: filter 0.15s, transform 0.15s;
   position: relative;

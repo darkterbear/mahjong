@@ -37,15 +37,16 @@
 /* Each stack has 2 layers; overlap them so they look like one thick stack. */
 .stack {
   position: relative;
-  width: 48px;
-  height: 72px;          /* tile height + a small offset for the bottom layer */
-  margin: 0 -4px;        /* lateral overlap to suggest tightly-adjacent tiles */
+  width: var(--wall-tile-w);
+  height: var(--wall-stack-h); /* tile height + a small offset for the bottom layer */
+  /* Lateral overlap, scaled to ~8% of tile width. */
+  margin: 0 calc(var(--wall-tile-w) * -0.083);
 }
 
 .wall-slot {
   position: absolute;
-  width: 48px;
-  height: 64px;
+  width: var(--wall-tile-w);
+  height: var(--wall-tile-h);
   display: block;
   left: 0;
   top: 0;
@@ -64,17 +65,15 @@
  * Left wall (90° rotation): bottom-layer appears bottom-right on screen.
  * Right wall (-90° rotation): bottom-layer appears upper-left on screen.
  */
-.perimeter-wall-side.bottom .wall-slot:nth-child(2) {
-  top: -4px; left: 4px;
-}
+/* Bottom-layer offset, ~8% of wall-tile width/height. */
+.perimeter-wall-side.bottom .wall-slot:nth-child(2),
 .perimeter-wall-side.top .wall-slot:nth-child(2) {
-  top: -4px; left: 4px;
+  top: calc(var(--wall-tile-h) * -0.0625);
+  left: calc(var(--wall-tile-w) * 0.0833);
 }
-.perimeter-wall-side.left .wall-slot:nth-child(2) {
-  top: -4px;
-}
+.perimeter-wall-side.left .wall-slot:nth-child(2),
 .perimeter-wall-side.right .wall-slot:nth-child(2) {
-  top: -4px;
+  top: calc(var(--wall-tile-h) * -0.0625);
 }
 
 .wall-slot.empty {
@@ -97,9 +96,7 @@
   cursor: pointer;
 }
 
-.perimeter-wall-side.left .wall-slot:nth-child(1) {
-  left: -4px;
-}
+.perimeter-wall-side.left .wall-slot:nth-child(1),
 .perimeter-wall-side.right .wall-slot:nth-child(1) {
-  left: -4px;
+  left: calc(var(--wall-tile-w) * -0.0833);
 }
