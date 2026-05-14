@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import random
+import time
+from dataclasses import dataclass, field
 from typing import Optional
 
 from subterfuge.engine.game import Game, GameConfig
@@ -14,6 +16,17 @@ from server.protocol import DiceResult, HandPhase, AvailableAction
 
 INITIAL_HAND_SIZE = 16
 DEAL_BATCH = 4
+
+
+@dataclass
+class ClaimWindow:
+    started_at: float
+    discarder: int
+    tile: int
+    is_robbing_kong: bool
+    pending_seats: set[int] = field(default_factory=set)
+    decisions: dict[int, dict | None] = field(default_factory=dict)
+    waiters: set[int] = field(default_factory=set)
 
 
 class Hand:
@@ -52,19 +65,9 @@ class Hand:
         self.phase: HandPhase = HandPhase.PRE_DICE
         self.dice_result: Optional[DiceResult] = None
         self.must_draw_back: bool = False
-        self._snapshots: list = []
         self.pending_flowers: list[list[int]] = [[], [], [], []]
         self.wall_rotation_offset: int = 0
-        self.co_hu_joined: list[int] = []
-        self.co_hu_remaining: list[int] = []
-        self.co_hu_declined: list[int] = []
-        self.co_hu_active: bool = False
-        # Robbing-the-kong state: set of eligible robber seats yet to respond.
-        # When a seat passes, it's removed; when this becomes empty, the gang
-        # is completed (or if any seat hu'd, settlement already fired).
-        self.robbing_kong_pending: list[int] = []
-        # NOTE: flower_resolution_seat removed — auto-resolution is orchestrated
-        # server-side in sockets.py using round-robin over pending_flowers.
+        self.claim_window: Optional[ClaimWindow] = None
 
         # Player-visible event log: list of {seat, kind, tile?, extra?} dicts.
         # Kinds: draw_front, draw_back, discard, declare_flower, peng, chi,
@@ -322,7 +325,6 @@ class Hand:
             kind = "robbing_kong_hu" if self.game._is_robbing_kong else "hu"
             self._log_event(seat, kind, tile=tile)
             self.phase = HandPhase.SETTLEMENT
-            self.robbing_kong_pending = []
             return
 
         if claim_type == "peng":
@@ -378,26 +380,25 @@ class Hand:
     def apply_multi_hu(self, winner_seats: list[int]) -> list:
         """Score N simultaneous hu winners off the same discard.
 
-        Snapshots before the first hu, then iterates: hu seat A → capture
-        result → restore → hu seat B → capture → ... → final restore + return
-        a list of GameResults. Caller is responsible for aggregating payments.
+        Iterates: hu seat A → capture result → restore → hu seat B → capture →
+        ... → final restore + return a list of GameResults.
+        Caller is responsible for aggregating payments.
         """
+        import copy
         from subterfuge.types import Action, ActionType
         if not winner_seats:
             raise ValueError("no winners")
         if self.game.phase.name != "CLAIM_WINDOW":
             raise RuntimeError(f"multi-hu requires open claim window (phase {self.game.phase})")
         results = []
-        # Take a fresh snapshot for the multi-hu walk.
-        self.snapshot()
-        baseline_idx = len(self._snapshots) - 1
+        # Snapshot the game state so we can restore for each winner.
+        baseline_game = copy.deepcopy(self.game)
         for seat in winner_seats:
             action = Action(ActionType.HU, tile=self.game.last_discard, player=seat)
             self.game.step(action)
             results.append(self.game.result)
             # Restore baseline for the next winner.
-            from server.undo import restore_snapshot
-            restore_snapshot(self, self._snapshots[baseline_idx])
+            self.game = copy.deepcopy(baseline_game)
         # After the loop we're back at baseline; advance to SETTLEMENT.
         self.phase = HandPhase.SETTLEMENT
         return results
@@ -410,68 +411,56 @@ class Hand:
         test_hand[tile_id] += 1
         return is_winning_hand(test_hand, len(p.melds))
 
-    def start_co_hu_window(self, initial_seat: int) -> None:
-        """Enter the co-hu window. The first hu claim has just arrived from initial_seat.
+    # ---- Claim window management -------------------------------------------
 
-        Computes which other non-discarder seats can ALSO hu on the pending tile
-        and pauses settlement until each responds.
-        """
-        if self.game.phase.name != "CLAIM_WINDOW":
-            raise RuntimeError(f"co-hu requires open claim window (phase {self.game.phase})")
-        tile = self.game.last_discard
-        discarder = self.game.last_discard_player
-        others = []
-        for seat in range(4):
-            if seat == initial_seat or seat == discarder:
-                continue
-            if self.can_hu_on_tile(seat, tile):
-                others.append(seat)
-        self.co_hu_joined = [initial_seat]
-        self.co_hu_remaining = others
-        self.co_hu_declined = []
-        self.co_hu_active = True
+    def open_claim_window(self, discarder: int, tile: int, is_robbing_kong: bool = False) -> None:
+        non_discarders = [s for s in range(4) if s != discarder]
+        self.claim_window = ClaimWindow(
+            started_at=time.monotonic(),
+            discarder=discarder,
+            tile=tile,
+            is_robbing_kong=is_robbing_kong,
+            pending_seats=set(non_discarders),
+            decisions={},
+            waiters=set(),
+        )
 
-    def record_co_hu_response(self, seat: int, accept: bool) -> None:
-        if not self.co_hu_active:
-            raise RuntimeError("no co-hu window open")
-        if seat not in self.co_hu_remaining:
-            raise ValueError(f"seat {seat} is not in remaining co-hu responders")
-        self.co_hu_remaining.remove(seat)
-        if accept:
-            self.co_hu_joined.append(seat)
+    def record_claim_decision(self, seat: int, decision: dict) -> None:
+        """decision is {"action": "pass"|"peng"|"chi"|"gang_open"|"hu", "tiles"?: [...]}."""
+        cw = self.claim_window
+        if cw is None or seat not in cw.pending_seats:
+            return
+        cw.decisions[seat] = decision
+        cw.pending_seats.discard(seat)
+        cw.waiters.discard(seat)
+
+    def record_wait_toggle(self, seat: int, wait: bool) -> None:
+        cw = self.claim_window
+        if cw is None or seat not in cw.pending_seats:
+            return
+        if wait:
+            cw.waiters.add(seat)
         else:
-            self.co_hu_declined.append(seat)
+            cw.waiters.discard(seat)
 
-    def co_hu_complete(self) -> bool:
-        return self.co_hu_active and not self.co_hu_remaining
+    def claim_window_resolvable(self) -> bool:
+        cw = self.claim_window
+        if cw is None:
+            return False
+        return (
+            len(cw.pending_seats) == 0
+            and len(cw.waiters) == 0
+            and (time.monotonic() - cw.started_at) >= 2.0
+        )
 
-    def finalize_co_hu(self) -> list:
-        """Run apply_multi_hu with all joined winners; return the list of GameResults."""
-        if not self.co_hu_complete():
-            raise RuntimeError("co-hu not yet complete")
-        winners = list(self.co_hu_joined)
-        self.co_hu_active = False
-        self.co_hu_joined = []
-        self.co_hu_remaining = []
-        self.co_hu_declined = []
-        return self.apply_multi_hu(winners)
+    def claim_window_remaining_seconds(self) -> float:
+        cw = self.claim_window
+        if cw is None:
+            return 0.0
+        return max(0.0, 2.0 - (time.monotonic() - cw.started_at))
 
-    def start_robbing_kong_window(self, eligible_seats: list[int]) -> None:
-        """Open a robbing-kong window. eligible_seats = non-declarer seats
-        whose hand could be completed by the gang-add tile."""
-        if self.game._pending_gang_add is None:
-            raise RuntimeError("no pending gang_add to rob")
-        self.robbing_kong_pending = list(eligible_seats)
-
-    def record_robbing_kong_pass(self, seat: int) -> bool:
-        """Record that `seat` passed on robbing. Returns True if this was the
-        last pending response (caller should complete the gang)."""
-        if seat in self.robbing_kong_pending:
-            self.robbing_kong_pending.remove(seat)
-        return len(self.robbing_kong_pending) == 0
-
-    def clear_robbing_kong(self) -> None:
-        self.robbing_kong_pending = []
+    def close_claim_window(self) -> None:
+        self.claim_window = None
 
     def declare_concealed_gang(self, tile_id: int) -> None:
         from subterfuge.types import Action, ActionType, Meld, MeldType
@@ -536,27 +525,7 @@ class Hand:
         if was_pending_add and self.game.phase == TurnPhase.DRAW:
             self.must_draw_back = True
 
-    def snapshot(self) -> None:
-        from server.undo import take_snapshot
-        self._snapshots.append(take_snapshot(self))
-
-    def undo(self) -> None:
-        from server.undo import restore_snapshot
-        if not self._snapshots:
-            raise RuntimeError("no snapshots to undo")
-        snap = self._snapshots.pop()
-        restore_snapshot(self, snap)
-
-    def clear_snapshots(self) -> None:
-        self._snapshots.clear()
-
     def available_actions(self, seat: int) -> list[AvailableAction]:
-        # CO_HU window: only eligible seats see Hu/Pass; others see nothing.
-        if self.co_hu_active:
-            if seat in self.co_hu_remaining:
-                return [AvailableAction.HU, AvailableAction.CO_HU_PASS]
-            return []
-
         if self.phase == HandPhase.PRE_DICE:
             return [AvailableAction.ROLL_DICE] if seat == self.dealer_seat else []
 
@@ -594,34 +563,17 @@ class Hand:
 
         if self.game.phase == TurnPhase.CLAIM_WINDOW and seat != self.game.last_discard_player:
             from subterfuge.types import ActionType
-            # During a robbing-kong window, only eligible robbers see actions.
-            if self.game._pending_gang_add is not None:
-                if seat in self.robbing_kong_pending:
-                    valid = self.game.get_valid_actions(seat)
-                    for a in valid:
-                        if a.action_type == ActionType.HU:
-                            result.append(AvailableAction.HU)
-                    # Also expose a PASS so the seat can decline.
-                    result.append(AvailableAction.ROBBING_KONG_PASS)
-                # else: not eligible, no actions in this window
-            else:
-                # Normal post-discard claim window.
-                valid = self.game.get_valid_actions(seat)
-                for a in valid:
-                    if a.action_type == ActionType.HU:
-                        result.append(AvailableAction.HU)
-                    elif a.action_type == ActionType.PENG:
-                        result.append(AvailableAction.PENG)
-                    elif a.action_type == ActionType.GANG_CALL:
-                        result.append(AvailableAction.GANG_OPEN)
-                    elif a.action_type == ActionType.CHI:
-                        result.append(AvailableAction.CHI)
-                # The next player counterclockwise of the discarder may also draw,
-                # which implicitly closes the claim window.
-                if self.game.last_discard_player is not None:
-                    next_to_draw = (self.game.last_discard_player + 1) % 4
-                    if seat == next_to_draw:
-                        result.append(AvailableAction.DRAW_FRONT)
+            # Normal post-discard claim window.
+            valid = self.game.get_valid_actions(seat)
+            for a in valid:
+                if a.action_type == ActionType.HU:
+                    result.append(AvailableAction.HU)
+                elif a.action_type == ActionType.PENG:
+                    result.append(AvailableAction.PENG)
+                elif a.action_type == ActionType.GANG_CALL:
+                    result.append(AvailableAction.GANG_OPEN)
+                elif a.action_type == ActionType.CHI:
+                    result.append(AvailableAction.CHI)
 
         # Deduplicate while preserving order.
         seen: set[AvailableAction] = set()

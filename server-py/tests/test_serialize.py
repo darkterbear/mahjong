@@ -43,6 +43,8 @@ def test_state_update_pending_claim_window() -> None:
         p2.add_tile(0)
     h.game.players[0].add_tile(0)
     h.apply_discard(0)
+    # Open the new-style ClaimWindow.
+    h.open_claim_window(discarder=0, tile=0, is_robbing_kong=False)
     s = build_state_update(
         hand=h, viewer_seat=2, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
@@ -113,9 +115,11 @@ def test_state_update_robbing_kong_window_flag() -> None:
     p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
     p.add_tile(1)
     h.declare_added_gang(1)
-    # Simulate the server marking seat 2 as an eligible robber.
-    h.start_robbing_kong_window([2])
-    # From seat 2's POV (eligible robber), the pending claim window should be flagged.
+    tile = h.game.last_discard
+    declarer = h.game.last_discard_player
+    # Open the new-style ClaimWindow for robbing kong (declarer = seat 0).
+    h.open_claim_window(discarder=declarer, tile=tile, is_robbing_kong=True)
+    # From seat 2's POV, the pending claim window should be flagged as robbing-kong.
     s = build_state_update(
         hand=h, viewer_seat=2, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
@@ -123,16 +127,12 @@ def test_state_update_robbing_kong_window_flag() -> None:
     assert s["pending_claim_window"] is not None
     assert s["pending_claim_window"]["is_robbing_kong_window"] is True
 
-    # A non-eligible viewer (seat 3) should NOT see the robbing-kong flag.
-    s3 = build_state_update(
-        hand=h, viewer_seat=3, seats=["a","b","c","d"],
+    # The discarder (seat 0) should NOT see the pending_claim_window.
+    s0 = build_state_update(
+        hand=h, viewer_seat=0, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
     )
-    # Seat 3 is not in robbing_kong_pending, so pending_claim_window is None.
-    assert (
-        s3["pending_claim_window"] is None
-        or s3["pending_claim_window"]["is_robbing_kong_window"] is False
-    )
+    assert s0["pending_claim_window"] is None
 
 
 def test_state_update_normal_claim_window_not_robbing() -> None:
@@ -142,6 +142,7 @@ def test_state_update_normal_claim_window_not_robbing() -> None:
         p2.add_tile(0)
     h.game.players[0].add_tile(0)
     h.apply_discard(0)
+    h.open_claim_window(discarder=0, tile=0, is_robbing_kong=False)
     s = build_state_update(
         hand=h, viewer_seat=2, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
@@ -250,6 +251,7 @@ def test_pending_claim_window_exposes_chi_combos() -> None:
     p1.add_tile(3)  # bamboo-4
     h.game.players[0].add_tile(2)  # bamboo-3 for seat 0 to discard
     h.apply_discard(2)
+    h.open_claim_window(discarder=0, tile=2, is_robbing_kong=False)
     s = build_state_update(
         hand=h, viewer_seat=1, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,
@@ -315,25 +317,3 @@ def test_state_update_exposes_kong_eligible_tiles() -> None:
     assert 1 in s["you"]["added_gang_tiles"]
 
 
-def test_undo_owner_skips_bots() -> None:
-    h = _setup_playing()
-    # Seat 0 is active (dealer in PRE_DICE → enter_playing makes it DISCARD for seat 0).
-    # Bots at seats 0 and 1, humans at 2 and 3.
-    s = build_state_update(
-        hand=h, viewer_seat=2, seats=["a", "b", "c", "d"],
-        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
-        bot_seats=frozenset({0, 1}),
-    )
-    # Active seat is 0 (bot). Walk CCW: seat 1 (bot) → seat 2 (human).
-    assert s["undo_owner_seat"] == 2
-
-
-def test_undo_owner_is_active_human() -> None:
-    h = _setup_playing()
-    # No bots — undo owner should be the active seat (0).
-    s = build_state_update(
-        hand=h, viewer_seat=0, seats=["a", "b", "c", "d"],
-        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
-        bot_seats=frozenset(),
-    )
-    assert s["undo_owner_seat"] == 0

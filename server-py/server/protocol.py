@@ -24,10 +24,9 @@ class ClientEvent(str, Enum):
     DECLARE_CONCEALED_GANG = "declare_concealed_gang"
     DECLARE_ADDED_GANG = "declare_added_gang"
     DECLARE_SELF_HU = "declare_self_hu"
-    UNDO = "undo"
     NEXT_HAND = "next_hand"
-    CO_HU_RESPONSE = "co_hu_response"
-    ROBBING_KONG_PASS_EVT = "robbing_kong_pass"
+    CLAIM_DECISION = "claim_decision"
+    CLAIM_WAIT = "claim_wait"
 
 
 class ServerEvent(str, Enum):
@@ -52,10 +51,7 @@ class AvailableAction(str, Enum):
     DECLARE_CONCEALED_GANG = "declare_concealed_gang"
     DECLARE_ADDED_GANG = "declare_added_gang"
     HU = "hu"
-    UNDO = "undo"
     NEXT_HAND = "next_hand"
-    CO_HU_PASS = "co_hu_pass"
-    ROBBING_KONG_PASS = "robbing_kong_pass"
 
 
 @dataclass

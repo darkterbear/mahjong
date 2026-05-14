@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import {
   rollDice, drawFront, drawBack, claim,
-  declareConcealedGang, declareAddedGang, declareSelfHu, undo, nextHand,
-  socket,
+  declareConcealedGang, declareAddedGang, declareSelfHu, nextHand,
+  claimDecision, claimWait,
 } from '../../api';
 import { tileImageUrl } from '../../sharedTiles';
 import './ActionBar.scss';
@@ -18,8 +18,6 @@ const LABELS = {
   declare_concealed_gang: 'Concealed Kong',
   declare_added_gang: 'Add Kong',
   next_hand: 'Next Hand',
-  co_hu_pass: 'Pass',
-  robbing_kong_pass: 'Pass (no rob)',
 };
 
 export function ActionBar({ state }) {
@@ -31,19 +29,17 @@ export function ActionBar({ state }) {
   const isCurrentSeat = state.current_turn_seat === state.you.seat;
   const showSelfHu = actions.includes('hu') && isCurrentSeat;
 
+  const pcw = state.pending_claim_window;
+  const inClaimWindow = pcw != null;
+  const youDecided = pcw?.you_decided;
+  const youWaiting = pcw?.you_waiting;
+
   const handleClick = (a) => {
     switch (a) {
       case 'roll_dice': return rollDice();
       case 'draw_front': return drawFront();
       case 'draw_back': return drawBack();
-      case 'hu': {
-        if (state.pending_co_hu && state.pending_co_hu.remaining_seats.includes(state.you.seat)) {
-          return socket.emit('co_hu_response', { accept: true });
-        }
-        return showSelfHu ? declareSelfHu() : claim('hu');
-      }
-      case 'co_hu_pass': return socket.emit('co_hu_response', { accept: false });
-      case 'robbing_kong_pass': return socket.emit('robbing_kong_pass');
+      case 'hu': return showSelfHu ? declareSelfHu() : claim('hu');
       case 'peng': return claim('peng');
       case 'chi': return setPicker('chi');
       case 'gang_open': return claim('gang_open');
@@ -61,7 +57,7 @@ export function ActionBar({ state }) {
     : [];
 
   const chiCombos = picker === 'chi'
-    ? (state.pending_claim_window?.chi_combos || [])
+    ? (pcw?.chi_combos || [])
     : [];
 
   const onPickTile = (tile_id) => {
@@ -71,10 +67,76 @@ export function ActionBar({ state }) {
   };
 
   const onPickChiCombo = (combo) => {
-    claim('chi', combo);
+    claimDecision('chi', combo);
     setPicker(null);
   };
 
+  // Claim window UI (viewer is not the discarder, and window is open).
+  if (inClaimWindow && !picker) {
+    if (youDecided) {
+      return (
+        <div className="action-bar">
+          <span className="decided-indicator">Decided ✓</span>
+        </div>
+      );
+    }
+
+    const yourOptions = pcw?.your_options || [];
+
+    const handleClaimWindowClick = (opt) => {
+      if (opt === 'chi') {
+        setPicker('chi');
+      } else {
+        claimDecision(opt);
+      }
+    };
+
+    return (
+      <div className="action-bar">
+        {yourOptions.map((opt) => (
+          <button key={opt} onClick={() => handleClaimWindowClick(opt)}>
+            {LABELS[opt] || opt}
+          </button>
+        ))}
+        <button onClick={() => claimDecision('pass')}>Pass</button>
+        <button
+          className={youWaiting ? 'wait-active' : ''}
+          onClick={() => claimWait(!youWaiting)}
+        >
+          {youWaiting ? 'Stop waiting' : 'Wait'}
+        </button>
+      </div>
+    );
+  }
+
+  // Chi picker (within claim window).
+  if (inClaimWindow && picker === 'chi') {
+    return (
+      <div className="action-bar">
+        <div className="kong-picker">
+          <span className="picker-label">Pick the two tiles to chi with:</span>
+          {chiCombos.length === 0 ? (
+            <span className="empty">(no chi combos)</span>
+          ) : (
+            chiCombos.map((combo, i) => (
+              <span
+                key={i}
+                className="chi-combo"
+                onClick={() => onPickChiCombo(combo)}
+              >
+                {combo.map((tid, j) => (
+                  <img key={j} className="picker-tile" src={tileImageUrl(tid)} alt="" />
+                ))}
+              </span>
+            ))
+          )}
+          <button className="cancel" onClick={() => setPicker(null)}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Normal turn UI (no claim window for this viewer).
   return (
     <div className="action-bar">
       {!picker && (
@@ -84,9 +146,6 @@ export function ActionBar({ state }) {
               {LABELS[a] || a}
             </button>
           ))}
-          {state.can_undo && state.undo_owner_seat === state.you.seat && (
-            <button className="undo" onClick={() => undo()}>Undo</button>
-          )}
         </>
       )}
       {picker && picker !== 'chi' && (

@@ -165,9 +165,11 @@ export function GamePage() {
         </div>
       )}
 
-      {state.pending_co_hu && state.pending_co_hu.remaining_seats.includes(state.you.seat) && (
-        <div className="co-hu-banner">
-          多家胡 — Co-Hu! Another player won on this tile. Click Hu to also win, or Pass.
+      {state.pending_claim_window?.waiters?.length > 0 &&
+       !state.pending_claim_window.you_waiting &&
+       state.pending_claim_window.waiter_usernames?.length > 0 && (
+        <div className="wait-banner">
+          Waiting for: {state.pending_claim_window.waiter_usernames.join(", ")}
         </div>
       )}
 

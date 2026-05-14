@@ -96,46 +96,20 @@ def build_state_update(
         })
 
     wall = _wall_payload(hand)
-    pending = _pending_claim_window(hand, viewer_seat)
+    pending = _pending_claim_window(hand, viewer_seat, seats)
     available = [a.value for a in hand.available_actions(viewer_seat)]
-
-    pending_co_hu = None
-    if hand.co_hu_active:
-        pending_co_hu = {
-            "tile": hand.game.last_discard,
-            "discarder_seat": hand.game.last_discard_player,
-            "joined_seats": list(hand.co_hu_joined),
-            "remaining_seats": list(hand.co_hu_remaining),
-            "declined_seats": list(hand.co_hu_declined),
-        }
-
-    # Undo owner: normally the active seat; if that seat is a bot, walk CCW
-    # until we find a human seat.
-    active = _active_seat(hand)
-    undo_owner: Optional[int] = active
-    if active in bot_seats:
-        for offset in range(1, 5):
-            cand = (active + offset) % 4
-            if cand not in bot_seats:
-                undo_owner = cand
-                break
-        else:
-            undo_owner = None  # all-bot table (shouldn't happen)
 
     return {
         "phase": hand.phase.value,
         "round_wind": WIND_NAMES[round_wind_index],
         "dealer_seat": hand.dealer_seat,
         "dealer_streak": dealer_streak,
-        "current_turn_seat": active,
+        "current_turn_seat": _active_seat(hand),
         "you": you,
         "others": others,
         "wall": wall,
         "available_actions": available,
         "pending_claim_window": pending,
-        "pending_co_hu": pending_co_hu,
-        "can_undo": len(hand._snapshots) > 0,
-        "undo_owner_seat": undo_owner,
         "event_log": _redact_event_log(hand.event_log, viewer_seat),
     }
 
@@ -232,31 +206,41 @@ def _wall_payload(hand: Hand) -> dict:
     }
 
 
-def _pending_claim_window(hand: Hand, viewer_seat: int) -> Optional[dict]:
-    if hand.game.phase != TurnPhase.CLAIM_WINDOW:
+def _pending_claim_window(hand: Hand, viewer_seat: int, seats: list[str] | None = None) -> Optional[dict]:
+    cw = hand.claim_window
+    if cw is None:
         return None
-    if viewer_seat == hand.game.last_discard_player:
+    if viewer_seat == cw.discarder:
         return None
-    # During a robbing-kong window, only eligible robbers see a claim window.
-    if hand.game._pending_gang_add is not None and viewer_seat not in hand.robbing_kong_pending:
-        return None
-    available = [a.value for a in hand.available_actions(viewer_seat)
-                 if a in (AvailableAction.PENG, AvailableAction.CHI,
-                          AvailableAction.GANG_OPEN, AvailableAction.HU,
-                          AvailableAction.ROBBING_KONG_PASS)]
+
+    # your_options: from available_actions filtered to claim types.
+    your_options = []
+    if viewer_seat in cw.pending_seats:
+        for a in hand.available_actions(viewer_seat):
+            if a.value in ("hu", "peng", "chi", "gang_open"):
+                your_options.append(a.value)
+
     chi_combos: list[list[int]] = []
-    if AvailableAction.CHI in hand.available_actions(viewer_seat):
-        viewer = hand.game.players[viewer_seat]
-        tile = hand.game.last_discard
-        chi_combos = [list(combo) for combo in viewer.can_chi(tile)]
-    is_robbing_kong = (
-        hand.game._pending_gang_add is not None
-        and viewer_seat in hand.robbing_kong_pending
-    )
+    if "chi" in your_options:
+        chi_combos = [list(c) for c in hand.game.players[viewer_seat].can_chi(cw.tile)]
+
+    you_decided = viewer_seat not in cw.pending_seats
+    you_waiting = viewer_seat in cw.waiters
+    waiters_list = sorted(cw.waiters)
+
+    waiter_usernames: list[str] = []
+    if seats is not None:
+        waiter_usernames = [seats[s] for s in waiters_list]
+
     return {
-        "discarder_seat": hand.game.last_discard_player,
-        "tile": hand.game.last_discard,
-        "your_options": available,
-        "is_robbing_kong_window": is_robbing_kong,
+        "discarder_seat": cw.discarder,
+        "tile": cw.tile,
+        "is_robbing_kong_window": cw.is_robbing_kong,
+        "your_options": your_options,
         "chi_combos": chi_combos,
+        "you_decided": you_decided,
+        "you_waiting": you_waiting,
+        "waiters": waiters_list,
+        "waiter_usernames": waiter_usernames,
+        "remaining_seconds": hand.claim_window_remaining_seconds(),
     }

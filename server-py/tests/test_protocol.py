@@ -19,8 +19,9 @@ def test_client_event_names() -> None:
     assert ClientEvent.DECLARE_CONCEALED_GANG.value == "declare_concealed_gang"
     assert ClientEvent.DECLARE_ADDED_GANG.value == "declare_added_gang"
     assert ClientEvent.DECLARE_SELF_HU.value == "declare_self_hu"
-    assert ClientEvent.UNDO.value == "undo"
     assert ClientEvent.NEXT_HAND.value == "next_hand"
+    assert ClientEvent.CLAIM_DECISION.value == "claim_decision"
+    assert ClientEvent.CLAIM_WAIT.value == "claim_wait"
 
 
 def test_server_event_names() -> None:

@@ -77,8 +77,9 @@ export const claim                = (action, tiles) => emit('claim', { action, t
 export const declareConcealedGang = (tile_id) => emit('declare_concealed_gang', { tile_id });
 export const declareAddedGang     = (tile_id) => emit('declare_added_gang', { tile_id });
 export const declareSelfHu        = ()        => emit('declare_self_hu');
-export const undo                 = ()        => emit('undo');
 export const nextHand             = ()        => emit('next_hand');
+export const claimDecision        = (action, tiles) => emit('claim_decision', { action, tiles });
+export const claimWait            = (wait)    => emit('claim_wait', { wait });
 
 // TODO: remove once GamePage is rewritten in Task 7.3
 export const playAction = () => {};
