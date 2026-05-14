@@ -609,10 +609,14 @@ async def _maybe_schedule_bot_turn(room: Room) -> None:
     if not room.is_bot_seat(active):
         return
 
+    # Bot's normal turn (draw + discard). No pre-delay — the 2s claim window
+    # that gates each discard already gives humans time to interrupt.
+    # A tiny 0.3s pace makes successive bot turns feel less jarring without
+    # adding meaningful wait.
     token = (hand, active, len(hand.event_log))
 
     async def _do_bot_turn():
-        await asyncio.sleep(2.0)
+        await asyncio.sleep(0.3)
         if room.session is None or room.session.current_hand is not hand:
             return
         if (hand, _active_seat(hand), len(hand.event_log)) != token:

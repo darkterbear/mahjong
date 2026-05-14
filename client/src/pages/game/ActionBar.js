@@ -88,11 +88,8 @@ export function ActionBar({ state }) {
   // Claim window UI (viewer is not the discarder, and window is open).
   if (inClaimWindow && !picker) {
     if (youDecided) {
-      return (
-        <div className="action-bar">
-          <span className="decided-indicator">Decided ✓</span>
-        </div>
-      );
+      // Quietly show nothing while we wait for the window to fully resolve.
+      return <div className="action-bar"></div>;
     }
 
     const yourOptions = pcw?.your_options || [];
