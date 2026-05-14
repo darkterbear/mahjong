@@ -594,10 +594,13 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
 
     try:
         if atype == ActionType.DRAW:
-            # Subterfuge may return a DRAW action; use draw_front.
+            # Subterfuge returns a DRAW action; pick front vs back based on state.
             if hand.game.phase == TurnPhase.CLAIM_WINDOW:
                 hand.close_claim_window_no_winner()
-            hand.draw_front()
+            if hand.must_draw_back:
+                hand.draw_back()
+            else:
+                hand.draw_front()
             if hand.phase.value == "SETTLEMENT":
                 await _settle_single_or_multi(room)
                 return

@@ -235,6 +235,8 @@ class Hand:
         self._log_event(seat, "draw_back", tile=tile)
         self.game._replacement_draw = True
         self.must_draw_back = False
+        # The player who triggered the back-of-wall draw (gang) must now discard.
+        self.game.phase = TurnPhase.DISCARD
 
     # ---- PLAYING phase: draws and discards -----------------------------------
 
