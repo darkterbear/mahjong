@@ -650,8 +650,24 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
                 await _settle_single_or_multi(room)
                 return
         elif atype == ActionType.PASS:
-            # Pass during claim window: skip.
-            pass
+            # During a normal claim window, the next-to-draw seat treats PASS
+            # as "close window + draw" — otherwise the bot is stuck because
+            # no one is going to advance the turn.
+            if (
+                hand.game.phase == TurnPhase.CLAIM_WINDOW
+                and hand.game._pending_gang_add is None
+                and not hand.co_hu_active
+                and hand.game.last_discard_player is not None
+                and seat == (hand.game.last_discard_player + 1) % 4
+            ):
+                hand.close_claim_window_no_winner()
+                if hand.game.phase == TurnPhase.DRAW and not hand.must_draw_back:
+                    hand.draw_front()
+                    if hand.phase.value == "SETTLEMENT":
+                        await _settle_single_or_multi(room)
+                        return
+            # Otherwise nothing to do — the bot is a non-next-to-draw
+            # non-discarder during a claim window; just stays passed.
         else:
             # Unknown action type — do nothing.
             print(f"[bot] seat={seat} unknown action type {atype}", file=sys.stderr)
