@@ -50,11 +50,17 @@ serve-bg: build
 	  echo "already running (pid $$(cat $(PID_FILE))); run 'make stop' first"; \
 	  exit 1; \
 	fi
-	@cd server-py && nohup .venv/bin/uvicorn server.app:app \
-	  --host 0.0.0.0 --port $(PORT) >$(LOG_FILE) 2>&1 & echo $$! >$(PID_FILE)
-	@echo "started pid $$(cat $(PID_FILE)) on :$(PORT), logging to $(LOG_FILE)"
-	@echo "tail logs:  make logs"
-	@echo "stop:       make stop"
+	@if pgrep -f "[u]vicorn server.app:app" >/dev/null; then \
+	  echo "uvicorn already running; run 'make stop' first"; exit 1; \
+	fi
+	@cd server-py && \
+	  ( nohup bash -c '.venv/bin/uvicorn server.app:app --host 0.0.0.0 --port $(PORT) 2>&1 | grep --line-buffered -v -E "Could not initialize NNPACK|400 Bad Request"' >$(LOG_FILE) 2>&1 & ); \
+	  sleep 1; \
+	  PID=$$(pgrep -f "[u]vicorn server.app:app" | head -n1); \
+	  echo $$PID >$(PID_FILE); \
+	  echo "started pid $$PID on :$(PORT), logging to $(LOG_FILE)"; \
+	  echo "tail logs:  make logs"; \
+	  echo "stop:       make stop"
 
 stop:
 	@if [ -f $(PID_FILE) ]; then \
