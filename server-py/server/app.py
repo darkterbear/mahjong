@@ -11,14 +11,23 @@ from fastapi.staticfiles import StaticFiles
 
 from server.routes import router
 
+_ALLOWED_ORIGINS = [
+    "http://localhost:5000",     # dev split mode (client served by yarn start)
+    "http://localhost:8080",     # single-port local (make serve)
+    "https://mahjong.terranceli.com",
+]
+# Plus any onrender.com subdomain so the deployed instance Just Works.
+_ALLOWED_ORIGIN_REGEX = r"^https://[a-z0-9-]+\.onrender\.com$"
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=["https://mahjong.terranceli.com", "http://localhost:5000"],
+    cors_allowed_origins=_ALLOWED_ORIGINS,
 )
 fastapi_app = FastAPI()
 fastapi_app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://mahjong.terranceli.com", "http://localhost:5000"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_origin_regex=_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
