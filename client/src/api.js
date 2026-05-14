@@ -7,7 +7,10 @@ export const BASE_URL = process.env.REACT_APP_API_URL || '';
 export let socket = null;
 export const connectSocket = () => {
   // Empty string → socket.io-client uses window.location for same-origin connect.
-  socket = io(BASE_URL || undefined, { withCredentials: true, transports: ['websocket'] });
+  // Let socket.io do its normal handshake (polling first, then upgrade to WS).
+  // Hardcoding transports to ['websocket'] breaks behind some edge proxies
+  // (e.g. Render) that don't preserve the upgrade headers on the first hit.
+  socket = io(BASE_URL || undefined, { withCredentials: true });
   return socket;
 };
 
