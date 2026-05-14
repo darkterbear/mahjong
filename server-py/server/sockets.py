@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
+import traceback
 from typing import Optional
 
 from server.app import sio
@@ -341,31 +342,59 @@ async def _auto_pass_after(room: Room, hand, seat: int, delay: float) -> None:
     that releasing Wait (or cancelling out of the chi picker) still triggers
     the auto-pass — otherwise the seat would sit in pending forever.
     """
-    await asyncio.sleep(delay)
-    while True:
-        if room.session is None or room.session.current_hand is not hand:
-            return
-        if hand.claim_window is None or seat not in hand.claim_window.pending_seats:
-            return
-        if seat not in hand.claim_window.waiters:
-            hand.record_claim_decision(seat, {"action": "pass"})
-            await _broadcast_state(room)
-            return
-        await asyncio.sleep(0.2)
+    try:
+        await asyncio.sleep(delay)
+        while True:
+            if room.session is None or room.session.current_hand is not hand:
+                return
+            if hand.claim_window is None or seat not in hand.claim_window.pending_seats:
+                return
+            if seat not in hand.claim_window.waiters:
+                hand.record_claim_decision(seat, {"action": "pass"})
+                await _broadcast_state(room)
+                return
+            await asyncio.sleep(0.2)
+    except Exception as e:
+        print(f"[claim] auto_pass_after seat={seat} crashed: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
 
 
 async def _resolve_claim_window_when_ready(room: Room, hand) -> None:
-    """Poll until the claim window is resolvable, then resolve it."""
-    while True:
-        if room.session is None or room.session.current_hand is not hand:
-            return
-        if hand.claim_window is None:
-            return
-        if hand.claim_window_resolvable():
-            await _resolve_claim_window(room)
-            return
-        remaining = hand.claim_window_remaining_seconds()
-        await asyncio.sleep(max(0.05, min(remaining, 0.2)))
+    """Poll until the claim window is resolvable, then resolve it.
+
+    Includes a hard safety-net: if the window has been open for >15s
+    (well past the 2s grace + any reasonable human Wait), force-pass any
+    seats still in pending so the game can never permanently hang.
+    """
+    SAFETY_TIMEOUT = 15.0
+    try:
+        while True:
+            if room.session is None or room.session.current_hand is not hand:
+                return
+            cw = hand.claim_window
+            if cw is None:
+                return
+            if hand.claim_window_resolvable():
+                await _resolve_claim_window(room)
+                return
+            elapsed = time.monotonic() - cw.started_at
+            if elapsed >= SAFETY_TIMEOUT:
+                stuck_seats = list(cw.pending_seats)
+                print(
+                    f"[claim] safety-net force-pass after {elapsed:.1f}s "
+                    f"(stuck pending={stuck_seats}, waiters={list(cw.waiters)})",
+                    file=sys.stderr,
+                )
+                for s in stuck_seats:
+                    hand.record_claim_decision(s, {"action": "pass"})
+                cw.waiters.clear()
+                await _resolve_claim_window(room)
+                return
+            remaining = hand.claim_window_remaining_seconds()
+            await asyncio.sleep(max(0.05, min(remaining, 0.2)))
+    except Exception as e:
+        print(f"[claim] resolve poll crashed: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
 
 
 async def _resolve_claim_window(room: Room) -> None:
@@ -688,14 +717,23 @@ async def _maybe_schedule_bot_turn(room: Room) -> None:
     token = (hand, active, len(hand.event_log))
 
     async def _do_bot_turn():
-        await asyncio.sleep(0.3)
-        if room.session is None or room.session.current_hand is not hand:
-            return
-        if hand.phase != HandPhase.PLAYING or hand.claim_window is not None:
-            return
-        if (hand, _active_seat(hand), len(hand.event_log)) != token:
-            return
-        await _execute_bot_action(room, active)
+        try:
+            await asyncio.sleep(0.3)
+            if room.session is None or room.session.current_hand is not hand:
+                return
+            if hand.phase != HandPhase.PLAYING or hand.claim_window is not None:
+                return
+            if (hand, _active_seat(hand), len(hand.event_log)) != token:
+                return
+            await _execute_bot_action(room, active)
+        except Exception as e:
+            print(f"[bot] seat={active} turn task crashed: {e}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            # Last-ditch: try a safe discard so we don't hang the room.
+            try:
+                await _bot_safe_fallback_discard(room, active)
+            except Exception:
+                pass
 
     asyncio.create_task(_do_bot_turn())
 
@@ -740,11 +778,40 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
     try:
         idx = choose_action_index(hand.game, seat)
         action = index_to_action(idx, seat, hand.game)
+        atype = action.action_type
     except Exception as e:
         print(f"[bot] seat={seat} error choosing action: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        await _bot_safe_fallback_discard(room, seat)
         return
 
-    atype = action.action_type
+    # Pre-validate so we never call into a hand-mutation path with an action
+    # the model picked off-mask. If validation fails, fall back to a discard
+    # so the game progresses instead of hanging on a silent exception.
+    player = hand.game.players[seat]
+    if atype == ActionType.GANG_ADD and action.tile not in player.can_gang_add():
+        print(
+            f"[bot] seat={seat} GANG_ADD on {action.tile} has no matching peng; falling back",
+            file=sys.stderr,
+        )
+        await _bot_safe_fallback_discard(room, seat)
+        return
+    if atype == ActionType.GANG_SELF and action.tile not in player.can_gang_self():
+        print(
+            f"[bot] seat={seat} GANG_SELF on {action.tile} not 4-of-a-kind; falling back",
+            file=sys.stderr,
+        )
+        await _bot_safe_fallback_discard(room, seat)
+        return
+    if atype == ActionType.HU:
+        from subterfuge.engine.hand_eval import is_winning_hand
+        if not is_winning_hand(player.hand, len(player.melds)):
+            print(
+                f"[bot] seat={seat} HU but hand not winning; falling back",
+                file=sys.stderr,
+            )
+            await _bot_safe_fallback_discard(room, seat)
+            return
 
     try:
         if atype == ActionType.DRAW:
@@ -759,7 +826,6 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
             p = hand.game.players[seat]
             target = action.tile
             if target < 0 or target >= 34 or int(p.hand[target]) <= 0:
-                # Fallback: model returned a tile not in hand. Pick first legal tile.
                 fallback = next((t for t in range(34) if int(p.hand[t]) > 0), None)
                 if fallback is None:
                     print(f"[bot] seat={seat} no legal discard tiles; aborting bot turn", file=sys.stderr)
@@ -782,23 +848,60 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
             await _start_claim_window_drivers(room)
             return
         elif atype == ActionType.HU:
-            # Self-draw hu (during DISCARD phase).
             hand.declare_self_hu()
             if hand.phase.value == "SETTLEMENT":
                 await _settle_single_or_multi(room)
                 return
         else:
-            # PASS or anything unexpected — do nothing.
-            print(f"[bot] seat={seat} unhandled action type {atype}", file=sys.stderr)
+            # Model returned PASS or something unexpected for a DISCARD-phase
+            # turn — keep the game moving with a fallback discard.
+            print(f"[bot] seat={seat} unhandled action type {atype}; falling back", file=sys.stderr)
+            await _bot_safe_fallback_discard(room, seat)
+            return
     except Exception as e:
         print(f"[bot] seat={seat} error executing action {atype}: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc(file=sys.stderr)
-        # Critical: dump the bot's hand state so we can diagnose later.
         p = hand.game.players[seat]
         in_hand = [t for t in range(34) if int(p.hand[t]) > 0]
-        print(f"[bot] seat={seat} hand_tiles={in_hand} melds={len(p.melds)} pending_flowers={hand.pending_flowers[seat]}", file=sys.stderr)
-        # Don't broadcast (which would re-schedule us into the same error).
+        print(
+            f"[bot] seat={seat} hand_tiles={in_hand} melds={len(p.melds)} "
+            f"pending_flowers={hand.pending_flowers[seat]}",
+            file=sys.stderr,
+        )
+        await _bot_safe_fallback_discard(room, seat)
         return
 
     await _broadcast_state(room)
+
+
+async def _bot_safe_fallback_discard(room: Room, seat: int) -> None:
+    """Last-resort: discard the first in-hand tile and broadcast.
+
+    Used when the bot's chosen action fails validation or mutation. Without
+    this safety net the game would silently hang waiting for a bot whose
+    turn was eaten by a swallowed exception.
+    """
+    s = room.session
+    if not s:
+        return
+    hand = s.current_hand
+    if hand is None or hand.phase != HandPhase.PLAYING:
+        return
+    if hand.claim_window is not None:
+        # We never reach here mid-claim — but if state somehow drifted, bail.
+        return
+    if hand.game.phase != TurnPhase.DISCARD or hand.game.current_player != seat:
+        return
+    player = hand.game.players[seat]
+    target = next((t for t in range(34) if int(player.hand[t]) > 0), None)
+    if target is None:
+        print(f"[bot] seat={seat} fallback: no tile to discard", file=sys.stderr)
+        return
+    try:
+        hand.apply_discard(target)
+        hand.open_claim_window(discarder=seat, tile=target, is_robbing_kong=False)
+        await _broadcast_state(room)
+        await _start_claim_window_drivers(room)
+    except Exception as e:
+        print(f"[bot] seat={seat} fallback discard failed: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)

@@ -500,7 +500,9 @@ class Hand:
     def declare_self_hu(self) -> None:
         from subterfuge.types import Action, ActionType
         seat = self.game.current_player
-        hu_tile = self.game.players[seat]._just_drew or -1
+        # NOTE: don't use `... or -1` — tile id 0 is a legit tile (1m).
+        just_drew = self.game.players[seat]._just_drew
+        hu_tile = just_drew if just_drew is not None else -1
         action = Action(
             ActionType.HU,
             tile=hu_tile,
