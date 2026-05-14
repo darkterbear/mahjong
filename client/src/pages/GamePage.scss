@@ -13,15 +13,21 @@ $accent: #FF4B12;
   overflow: hidden;
 }
 
-#status-panel {
+#left-rail {
   position: absolute;
   top: 1rem;
   left: 1rem;
   width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+}
+
+#status-panel {
   background: rgba(0, 0, 0, 0.4);
   padding: 10px 12px;
   border-radius: 8px;
-  z-index: 5;
   font-size: 12px;
   line-height: 1.5;
 

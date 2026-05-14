@@ -1,12 +1,8 @@
 .scoreboard {
-  position: absolute;
-  top: calc(1rem + 150px);   /* sit below the status panel */
-  left: 1rem;
-  width: 200px;
+  width: 100%;
   background: rgba(0,0,0,0.4);
   padding: 12px;
   border-radius: 8px;
-  z-index: 5;
   font-size: 13px;
 
   h3 { margin: 0 0 8px; font-size: 14px; }

@@ -652,8 +652,18 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
                 await _settle_single_or_multi(room)
                 return
         elif atype == ActionType.DISCARD:
-            hand.apply_discard(action.tile)
-            hand.open_claim_window(discarder=seat, tile=action.tile, is_robbing_kong=False)
+            p = hand.game.players[seat]
+            target = action.tile
+            if target < 0 or target >= 34 or int(p.hand[target]) <= 0:
+                # Fallback: model returned a tile not in hand. Pick first legal tile.
+                fallback = next((t for t in range(34) if int(p.hand[t]) > 0), None)
+                if fallback is None:
+                    print(f"[bot] seat={seat} no legal discard tiles; aborting bot turn", file=sys.stderr)
+                    return
+                print(f"[bot] seat={seat} model picked invalid discard tile {target}, falling back to {fallback}", file=sys.stderr)
+                target = fallback
+            hand.apply_discard(target)
+            hand.open_claim_window(discarder=seat, tile=target, is_robbing_kong=False)
             await _broadcast_state(room)
             await _start_claim_window_drivers(room)
             return
@@ -680,5 +690,11 @@ async def _execute_bot_action(room: Room, seat: int) -> None:
         print(f"[bot] seat={seat} error executing action {atype}: {e}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
+        # Critical: dump the bot's hand state so we can diagnose later.
+        p = hand.game.players[seat]
+        in_hand = [t for t in range(34) if int(p.hand[t]) > 0]
+        print(f"[bot] seat={seat} hand_tiles={in_hand} melds={len(p.melds)} pending_flowers={hand.pending_flowers[seat]}", file=sys.stderr)
+        # Don't broadcast (which would re-schedule us into the same error).
+        return
 
     await _broadcast_state(room)

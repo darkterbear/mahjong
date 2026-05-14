@@ -133,31 +133,36 @@ export function GamePage() {
 
   return (
     <div id="game-page">
-      <aside id="status-panel">
-        <h4>Status</h4>
-        <div className="status-row">
-          <span className="label">Round:</span>
-          <span className="value">{state.round_wind}</span>
-        </div>
-        <div className="status-row">
-          <span className="label">Streak:</span>
-          <span className="value">{state.dealer_streak}</span>
-        </div>
-        <div className="status-row">
-          <span className="label">Phase:</span>
-          <span className="value">{state.phase}</span>
-        </div>
-        <div className="status-row">
-          <span className="label">Turn:</span>
-          <span className={`value ${state.current_turn_seat === state.you.seat ? 'turn-self' : ''}`}>
-            {state.current_turn_seat === state.you.seat ? 'YOU' : `seat ${state.current_turn_seat}`}
-          </span>
-        </div>
-        <div className="status-row">
-          <span className="label">Actions:</span>
-          <span className="value">{(state.available_actions || []).join(', ') || '(none)'}</span>
-        </div>
-      </aside>
+      <div id="left-rail">
+        <aside id="status-panel">
+          <h4>Status</h4>
+          <div className="status-row">
+            <span className="label">Round:</span>
+            <span className="value">{state.round_wind}</span>
+          </div>
+          <div className="status-row">
+            <span className="label">Streak:</span>
+            <span className="value">{state.dealer_streak}</span>
+          </div>
+          <div className="status-row">
+            <span className="label">Phase:</span>
+            <span className="value">{state.phase}</span>
+          </div>
+          <div className="status-row">
+            <span className="label">Turn:</span>
+            <span className={`value ${state.current_turn_seat === state.you.seat ? 'turn-self' : ''}`}>
+              {state.current_turn_seat === state.you.seat ? 'YOU' : `seat ${state.current_turn_seat}`}
+            </span>
+          </div>
+          <div className="status-row">
+            <span className="label">Actions:</span>
+            <span className="value">{(state.available_actions || []).join(', ') || '(none)'}</span>
+          </div>
+        </aside>
+
+        <Scoreboard state={state} />
+        <EventLog state={state} />
+      </div>
 
       {state.pending_claim_window?.is_robbing_kong_window && (
         <div className="robbing-kong-banner">
@@ -172,9 +177,6 @@ export function GamePage() {
           Waiting for: {state.pending_claim_window.waiter_usernames.join(", ")}
         </div>
       )}
-
-      <Scoreboard state={state} />
-      <EventLog state={state} />
 
       <PerimeterWall state={state} />
       <CenterDiscards state={state} />

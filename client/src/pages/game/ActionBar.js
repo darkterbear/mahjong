@@ -7,6 +7,18 @@ import {
 import { tileImageUrl } from '../../sharedTiles';
 import './ActionBar.scss';
 
+function TimedButton({ children, onClick, durationSeconds, className }) {
+  const animStyle = durationSeconds > 0
+    ? { animationDuration: `${durationSeconds}s` }
+    : { display: 'none' };
+  return (
+    <button className={`timed ${className || ''}`} onClick={onClick}>
+      <span className="timer-fill" style={animStyle} />
+      <span className="timer-label">{children}</span>
+    </button>
+  );
+}
+
 const LABELS = {
   roll_dice: 'Roll Dice',
   draw_front: 'Draw',
@@ -33,6 +45,8 @@ export function ActionBar({ state }) {
   const inClaimWindow = pcw != null;
   const youDecided = pcw?.you_decided;
   const youWaiting = pcw?.you_waiting;
+  const durationSeconds = pcw?.remaining_seconds || 0;
+  const cwKey = pcw ? `${pcw.discarder_seat}-${pcw.tile}` : null;
 
   const handleClick = (a) => {
     switch (a) {
@@ -94,17 +108,29 @@ export function ActionBar({ state }) {
     return (
       <div className="action-bar">
         {yourOptions.map((opt) => (
-          <button key={opt} onClick={() => handleClaimWindowClick(opt)}>
+          <TimedButton
+            key={`${opt}-${cwKey}`}
+            durationSeconds={durationSeconds}
+            onClick={() => handleClaimWindowClick(opt)}
+          >
             {LABELS[opt] || opt}
-          </button>
+          </TimedButton>
         ))}
-        <button onClick={() => claimDecision('pass')}>Pass</button>
-        <button
+        <TimedButton
+          key={`pass-${cwKey}`}
+          durationSeconds={durationSeconds}
+          onClick={() => claimDecision('pass')}
+        >
+          Pass
+        </TimedButton>
+        <TimedButton
+          key={`wait-${cwKey}`}
+          durationSeconds={durationSeconds}
           className={youWaiting ? 'wait-active' : ''}
           onClick={() => claimWait(!youWaiting)}
         >
           {youWaiting ? 'Stop waiting' : 'Wait'}
-        </button>
+        </TimedButton>
       </div>
     );
   }

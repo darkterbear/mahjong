@@ -1,14 +1,10 @@
 .event-log {
-  position: absolute;
-  top: calc(1rem + 370px);   /* sit below the status panel + scoreboard */
-  left: 1rem;
-  width: 200px;
+  width: 100%;
   background: rgba(0, 0, 0, 0.4);
   color: #eee;
   padding: 8px 10px;
   border-radius: 6px;
   font-size: 12px;
-  z-index: 5;
 
   h4 {
     margin: 0 0 6px;
