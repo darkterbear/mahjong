@@ -276,12 +276,14 @@ async def _start_claim_window_drivers(room: Room) -> None:
             continue
         decision = _bot_claim_decision(hand, seat)
         hand.record_claim_decision(seat, decision)
-    # Humans with no eligible claim: auto-pass at 2s.
+    # Every human is auto-passed at the 2s mark unless they explicitly
+    # claimed or pressed Wait. (Humans with no eligible claim never see a
+    # prompt — see serialize._pending_claim_window — they're auto-passed
+    # purely server-side.)
     for seat in list(cw.pending_seats):
         if room.is_bot_seat(seat):
             continue
-        if not _human_has_claim(hand, seat):
-            asyncio.create_task(_auto_pass_after(room, hand, seat, 2.0))
+        asyncio.create_task(_auto_pass_after(room, hand, seat, 2.0))
     # Schedule resolution timer.
     asyncio.create_task(_resolve_claim_window_when_ready(room, hand))
     # Push updated state with bots' decisions already applied.

@@ -114,12 +114,18 @@ def test_state_update_robbing_kong_window_flag() -> None:
     from subterfuge.types import Meld, MeldType
     p.melds.append(Meld(meld_type=MeldType.PENG, tiles=[1, 1, 1], source_player=3))
     p.add_tile(1)
+    # Set up seat 2 with a hand that wins on tile 1 (so they CAN rob).
+    import numpy as np
+    p2 = h.game.players[2]
+    p2.hand = np.zeros(34, dtype=np.int8)
+    for tid, count in [(0, 3), (2, 3), (3, 3), (4, 3), (5, 3), (1, 1)]:
+        for _ in range(count):
+            p2.add_tile(tid)
     h.declare_added_gang(1)
     tile = h.game.last_discard
     declarer = h.game.last_discard_player
-    # Open the new-style ClaimWindow for robbing kong (declarer = seat 0).
     h.open_claim_window(discarder=declarer, tile=tile, is_robbing_kong=True)
-    # From seat 2's POV, the pending claim window should be flagged as robbing-kong.
+    # Seat 2 has an eligible Hu on tile 1 → should see the claim window.
     s = build_state_update(
         hand=h, viewer_seat=2, seats=["a","b","c","d"],
         cumulative_scores=[0,0,0,0], round_wind_index=0, dealer_streak=0,

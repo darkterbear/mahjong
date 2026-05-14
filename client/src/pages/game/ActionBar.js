@@ -117,13 +117,6 @@ export function ActionBar({ state }) {
           </TimedButton>
         ))}
         <TimedButton
-          key={`pass-${cwKey}`}
-          durationSeconds={durationSeconds}
-          onClick={() => claimDecision('pass')}
-        >
-          Pass
-        </TimedButton>
-        <TimedButton
           key={`wait-${cwKey}`}
           durationSeconds={durationSeconds}
           className={youWaiting ? 'wait-active' : ''}

@@ -220,6 +220,12 @@ def _pending_claim_window(hand: Hand, viewer_seat: int, seats: list[str] | None 
             if a.value in ("hu", "peng", "chi", "gang_open"):
                 your_options.append(a.value)
 
+    # If the viewer has nothing to do (no eligible claims), hide the claim
+    # window from them entirely — they don't get prompted, the server
+    # auto-passes them at the 2s mark.
+    if not your_options and viewer_seat in cw.pending_seats:
+        return None
+
     chi_combos: list[list[int]] = []
     if "chi" in your_options:
         chi_combos = [list(c) for c in hand.game.players[viewer_seat].can_chi(cw.tile)]
