@@ -106,3 +106,19 @@ $accent: #FF4B12;
   z-index: 7;
   animation: pulse 1.4s ease-in-out infinite;
 }
+
+.reconnect-banner {
+  position: fixed;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #c14a16;
+  color: white;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: pulse 1.2s ease-in-out infinite;
+}

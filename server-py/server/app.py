@@ -22,6 +22,11 @@ _ALLOWED_ORIGIN_REGEX = r"^https://[a-z0-9-]+\.onrender\.com$"
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins=_ALLOWED_ORIGINS,
+    # Ping every 15s so even a 30s nginx proxy_read_timeout stays awake.
+    # ping_timeout is how long we wait for a pong before declaring the peer
+    # dead — keep it modest so a broken socket cleans up quickly.
+    ping_interval=15,
+    ping_timeout=20,
 )
 fastapi_app = FastAPI()
 fastapi_app.add_middleware(

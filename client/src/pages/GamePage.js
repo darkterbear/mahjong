@@ -19,6 +19,7 @@ export function GamePage() {
   const [dice, setDice] = useState(null);
   const [settlement, setSettlement] = useState(null);
   const [dealing, setDealing] = useState(null);
+  const [connState, setConnState] = useState('connected');  // 'connected' | 'reconnecting'
 
   // Sound effects via Web Audio API so we can boost gain (the source wavs are
   // quieter than the UI calls for). Declared BEFORE the socket-subscription
@@ -76,7 +77,23 @@ export function GamePage() {
     });
     socket.on('dealing_step', (d) => setDealing(d));
     socket.on('hand_settlement', (s) => setSettlement(s));
-    socket.on('disconnect', () => history.replace('/'));
+    // socket.io reconnects on its own. Don't kick the user off the game page
+    // on a transient drop — flip a banner instead, and re-auth when the
+    // socket comes back so the server rebinds the new sid to our player_id.
+    socket.on('disconnect', (reason) => {
+      // 'io client disconnect' fires when WE explicitly disconnect; in that
+      // case there's nothing to reconnect to and bouncing to '/' is correct.
+      if (reason === 'io client disconnect') {
+        history.replace('/');
+        return;
+      }
+      setConnState('reconnecting');
+    });
+    socket.on('connect', () => {
+      // Fires on both initial connect and every successful reconnect.
+      if (code) authSocket(code);
+      setConnState('connected');
+    });
 
     return () => {
       socket.off('state_update');
@@ -84,6 +101,7 @@ export function GamePage() {
       socket.off('dealing_step');
       socket.off('hand_settlement');
       socket.off('disconnect');
+      socket.off('connect');
     };
   }, []);
 
@@ -133,6 +151,9 @@ export function GamePage() {
 
   return (
     <div id="game-page">
+      {connState === 'reconnecting' && (
+        <div className="reconnect-banner">Reconnecting…</div>
+      )}
       <div id="left-rail">
         <aside id="status-panel">
           <h4>Status</h4>
