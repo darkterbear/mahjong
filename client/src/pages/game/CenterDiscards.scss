@@ -1,57 +1,56 @@
 .center-discards {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  /* Scale the centre grid with the viewport so 6 rows of discard tiles fit
-   * each quadrant on a 13" laptop without overlapping the wall. */
-  width: clamp(260px, 36vmin, 400px);
-  height: clamp(260px, 36vmin, 400px);
+  inset: 0;
   pointer-events: none;
   z-index: 2;
-
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 8px;
 }
 
+/* Each pile sits centered in front of its player, between the wall (at 25%
+ * inset) and the centre of the table. The four strips never overlap because
+ * each one is anchored to a different edge and lives in its own band of the
+ * inner board. */
 .pile {
+  position: absolute;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-start;
-  overflow: hidden;
+  justify-content: center;
+  flex-direction: row;
   padding: 4px;
   box-sizing: border-box;
   background: rgba(0, 0, 0, 0.08);
   border-radius: 4px;
-  max-width: 100%;
-  max-height: 100%;
+  /* Pre-rotation: width sets the row extent; max-height bounds the perpendicular
+   * growth. After rotation the meaning swaps, but the visual effect is the
+   * same: a horizontal strip in front of the player. */
+  width: 28vmin;
+  max-height: 18vmin;
 }
 
-/* Assign each side to a specific grid cell. */
-.pile-top {
-  grid-column: 1;
-  grid-row: 1;
-  transform: rotate(180deg);
-  justify-content: center;
+/* NOTE: left/right piles use a larger inset than top/bottom because the
+ * 90° rotation pivots around the pile's pre-rotation centre — adding
+ * half the pile's pre-rotation width (16vmin) to the effective inward
+ * position. To get a similar visual gap from the wall on all four sides,
+ * top/bottom use 25% + 8vmin while left/right use 25% + 13vmin. */
+.pile-bottom {
+  bottom: calc(25% + 8vmin);
+  left: 50%;
+  transform: translateX(-50%);
 }
-.pile-right {
-  grid-column: 2;
-  grid-row: 1;
-  transform: rotate(-90deg);
-  justify-content: center;
+.pile-top {
+  top: calc(25% + 8vmin);
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
 }
 .pile-left {
-  grid-column: 1;
-  grid-row: 2;
-  transform: rotate(90deg);
-  justify-content: center;
+  left: calc(25% + 13vmin);
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
 }
-.pile-bottom {
-  grid-column: 2;
-  grid-row: 2;
-  justify-content: center;
+.pile-right {
+  right: calc(25% + 13vmin);
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
 }
 
 .discard-tile {
@@ -61,13 +60,12 @@
 }
 
 /* Highlight of the just-discarded tile during the 2s claim window — sits
- * directly below the discard grid, can overlap the wall (intentional). */
+ * dead-center on the board (the spot inside the four discard piles). */
 .discard-highlight {
   position: absolute;
-  /* Sit just below the bottom edge of the (responsive) discard grid. */
-  top: calc(50% + clamp(130px, 18vmin, 200px) + 10px);
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 4;
   pointer-events: none;
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));

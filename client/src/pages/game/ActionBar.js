@@ -35,8 +35,11 @@ const LABELS = {
 export function ActionBar({ state }) {
   const [picker, setPicker] = useState(null); // 'concealed' | 'added' | 'chi' | null
   const actions = state.available_actions || [];
+  // Draws are auto-handled server-side (front draw + kong replacement), so
+  // suppress the buttons even when the server briefly advertises them in
+  // available_actions between state transitions.
   const buttons = actions.filter(
-    (a) => !['discard', 'declare_flower'].includes(a)
+    (a) => !['discard', 'declare_flower', 'draw_front', 'draw_back'].includes(a)
   );
   const isCurrentSeat = state.current_turn_seat === state.you.seat;
   const showSelfHu = actions.includes('hu') && isCurrentSeat;
