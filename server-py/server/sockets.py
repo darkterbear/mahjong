@@ -284,13 +284,19 @@ async def _start_claim_window_drivers(room: Room) -> None:
             continue
         decision = _bot_claim_decision(hand, seat)
         hand.record_claim_decision(seat, decision)
-    # Every human is auto-passed at the 2s mark unless they explicitly
-    # claimed or pressed Wait. (Humans with no eligible claim never see a
-    # prompt — see serialize._pending_claim_window — they're auto-passed
-    # purely server-side.)
+    # Humans with HU as an option auto-enter Wait so they get unbounded
+    # time to consider a winning hand without being force-passed at 2s.
+    from server.protocol import AvailableAction
     for seat in list(cw.pending_seats):
         if room.is_bot_seat(seat):
             continue
+        if AvailableAction.HU in hand.available_actions(seat):
+            cw.waiters.add(seat)
+    # Every human (or remaining bot, defense-in-depth) is auto-passed at
+    # the 2s mark unless they explicitly claimed, pressed Wait, or were
+    # auto-waited above. The auto-pass task loops while the seat is in
+    # waiters, so it'll fire if/when they stop waiting without deciding.
+    for seat in list(cw.pending_seats):
         asyncio.create_task(_auto_pass_after(room, hand, seat, 2.0))
     # Schedule resolution timer.
     asyncio.create_task(_resolve_claim_window_when_ready(room, hand))
@@ -362,11 +368,15 @@ async def _auto_pass_after(room: Room, hand, seat: int, delay: float) -> None:
 async def _resolve_claim_window_when_ready(room: Room, hand) -> None:
     """Poll until the claim window is resolvable, then resolve it.
 
-    Includes a hard safety-net: if the window has been open for >15s
-    (well past the 2s grace + any reasonable human Wait), force-pass any
-    seats still in pending so the game can never permanently hang.
+    Force-passes any NON-waiter seats that have been stuck in pending
+    past the safety timeout — covers silent bot crashes or any
+    auto_pass_after task that died. Waiters (humans who pressed Wait
+    or opened the chi picker) are NEVER force-passed; they get
+    unbounded time to decide. If they want to release the window they
+    must explicitly Stop Waiting or pick an action.
     """
-    SAFETY_TIMEOUT = 15.0
+    NON_WAITER_TIMEOUT = 15.0
+    forced_non_waiters = False
     try:
         while True:
             if room.session is None or room.session.current_hand is not hand:
@@ -378,18 +388,23 @@ async def _resolve_claim_window_when_ready(room: Room, hand) -> None:
                 await _resolve_claim_window(room)
                 return
             elapsed = time.monotonic() - cw.started_at
-            if elapsed >= SAFETY_TIMEOUT:
-                stuck_seats = list(cw.pending_seats)
-                print(
-                    f"[claim] safety-net force-pass after {elapsed:.1f}s "
-                    f"(stuck pending={stuck_seats}, waiters={list(cw.waiters)})",
-                    file=sys.stderr,
-                )
-                for s in stuck_seats:
-                    hand.record_claim_decision(s, {"action": "pass"})
-                cw.waiters.clear()
-                await _resolve_claim_window(room)
-                return
+            if (
+                not forced_non_waiters
+                and elapsed >= NON_WAITER_TIMEOUT
+            ):
+                non_waiters = list(cw.pending_seats - cw.waiters)
+                if non_waiters:
+                    print(
+                        f"[claim] safety-net force-pass non-waiters "
+                        f"after {elapsed:.1f}s: {sorted(non_waiters)} "
+                        f"(waiters still active={sorted(cw.waiters)})",
+                        file=sys.stderr,
+                    )
+                    for s in non_waiters:
+                        hand.record_claim_decision(s, {"action": "pass"})
+                    await _broadcast_state(room)
+                forced_non_waiters = True
+                continue
             remaining = hand.claim_window_remaining_seconds()
             await asyncio.sleep(max(0.05, min(remaining, 0.2)))
     except Exception as e:
