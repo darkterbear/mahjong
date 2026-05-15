@@ -11,12 +11,42 @@
   align-items: center;
   flex-direction: column;
   z-index: 50;
+  color: #eee;
+}
 
-  .die {
-    width: 56px; height: 56px;
-    background: white; color: #2b2b2b;
-    border-radius: 8px;
-    font-size: 36px; font-weight: bold;
-    display: flex; align-items: center; justify-content: center;
-  }
+.dice-row {
+  display: flex;
+  gap: 12px;
+}
+
+.die {
+  width: 56px;
+  height: 56px;
+  background: white;
+  border-radius: 10px;
+  padding: 6px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 4px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.die .pip {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.die .pip.on {
+  background: #2b2b2b;
+}
+
+.sum {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
 }

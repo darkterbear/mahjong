@@ -9,25 +9,25 @@
   display: flex;
 
   &.bottom {
-    bottom: 18%;
+    bottom: 25%;
     left: 50%;
     transform: translateX(-50%);
     flex-direction: row;
   }
   &.top {
-    top: 18%;
+    top: 25%;
     left: 50%;
     transform: translateX(-50%) rotate(180deg);
     flex-direction: row;
   }
   &.left {
-    left: 18%;
+    left: 25%;
     top: 50%;
     transform: translateY(-50%) rotate(90deg);
     flex-direction: row;
   }
   &.right {
-    right: 18%;
+    right: 25%;
     top: 50%;
     transform: translateY(-50%) rotate(-90deg);
     flex-direction: row;

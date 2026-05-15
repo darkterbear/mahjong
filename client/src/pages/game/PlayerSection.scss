@@ -33,6 +33,13 @@
   align-items: center;
 }
 
+/* The top opponent's section is rotated 180° so their tiles sit at the
+ * top of the screen facing us; counter-rotate their name so it reads
+ * upright instead of upside-down. */
+.player-section.other.top .meta-row {
+  transform: rotate(180deg);
+}
+
 .hand-row {
   display: flex;
   align-items: center;
@@ -47,6 +54,15 @@
   cursor: pointer;
   transition: filter 0.15s, transform 0.15s;
   position: relative;
+}
+
+.player-section.self .tile {
+  width: var(--self-hand-tile-w);
+  margin: 0 calc(var(--self-hand-tile-w) * -0.11);
+}
+.player-section.other .tile {
+  width: var(--other-hand-tile-w);
+  margin: 0 calc(var(--other-hand-tile-w) * -0.11);
 }
 .tile:hover {
   filter: drop-shadow(0 0 8px #527aff);

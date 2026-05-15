@@ -20,7 +20,7 @@ export function PlayerSection({ state, viewer, other }) {
 }
 
 function SelfSection({ state }) {
-  const { hand, melds, flowers, seat_wind } = state.you;
+  const { hand, melds, flowers } = state.you;
   const canDiscard = state.available_actions.includes('discard');
   const isYourTurn = state.current_turn_seat === state.you.seat;
 
@@ -34,7 +34,7 @@ function SelfSection({ state }) {
   return (
     <div className="player-section self">
       <div className={`meta-row ${isYourTurn ? 'active-turn' : ''}`}>
-        <span className="seat-wind">{seat_wind}</span>
+        <span className="username">{state.you.username || 'You'}</span>
       </div>
       <div className="hand-row">
         {hand.map((t, i) => tileImg(t, `h${i}`, () => onTileClick(t, i)))}
@@ -70,7 +70,6 @@ function OtherSection({ state, other }) {
     <div className={`player-section other ${side}`}>
       <div className={`meta-row ${isTheirTurn ? 'active-turn' : ''}`}>
         <span className="username">{other.username}</span>
-        <span className="seat-wind">{other.seat_wind}</span>
       </div>
       <div className={`hand-row ${revealedHand ? '' : 'hidden-hand'}`}>
         {revealedHand

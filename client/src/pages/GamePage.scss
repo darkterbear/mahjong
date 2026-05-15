@@ -16,10 +16,14 @@ $accent: #FF4B12;
    * the tile size scale with the smaller viewport dimension so a 13" laptop
    * (1280x800 → vmin=8px) gets ~36px tiles while a 27" monitor (vmin≈14px)
    * gets the full 56px. */
-  --hand-tile-w: clamp(34px, 4.4vmin, 56px);
-  --wall-tile-w: clamp(28px, 3.7vmin, 48px);
-  --wall-tile-h: clamp(38px, 5vmin, 64px);
-  --wall-stack-h: clamp(44px, 5.6vmin, 72px);
+  /* The viewer's own hand is rendered larger than other players' hidden
+   * hands; the bigger tiles make it easier to read and click. */
+  --self-hand-tile-w: clamp(51px, 6.6vmin, 84px);
+  --other-hand-tile-w: clamp(34px, 4.4vmin, 56px);
+  --hand-tile-w: var(--other-hand-tile-w); /* legacy default */
+  --wall-tile-w: clamp(21px, 2.8vmin, 36px);
+  --wall-tile-h: clamp(28px, 3.75vmin, 48px);
+  --wall-stack-h: clamp(33px, 4.2vmin, 54px);
   --discard-tile-w: clamp(20px, 2.5vmin, 32px);
   --picker-tile-w: clamp(30px, 3.8vmin, 48px);
 }
