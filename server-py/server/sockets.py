@@ -226,6 +226,14 @@ async def on_next_hand(sid: str, data: dict) -> None:
     seat = room.session.seats.index(player.player_id)
     if seat != room.session.next_hand_dealer_seat():
         return
+    # Idempotency: if the previous hand is already settled and a new Hand
+    # has been started (perhaps by the bot auto-advance task firing first),
+    # don't start a second one. The hand object is replaced atomically by
+    # start_new_hand; we only advance when the current hand is still in
+    # SETTLEMENT.
+    current = room.session.current_hand
+    if current is None or current.phase != HandPhase.SETTLEMENT:
+        return
     room.session.start_new_hand()
     await _broadcast_state(room)
 
@@ -242,10 +250,24 @@ async def on_claim_decision(sid: str, data: dict) -> None:
     action = data.get("action", "pass")
     if action == "pass":
         decision = {"action": "pass"}
-    elif action in ("peng", "chi", "gang_open", "hu"):
+    elif action in ("peng", "gang_open", "hu"):
         decision = {"action": action}
-        if action == "chi" and data.get("tiles"):
-            decision["tiles"] = list(data["tiles"])
+    elif action == "chi":
+        # Chi requires exactly two integer hand tiles. Reject anything else
+        # so a malformed message can't crash _resolve_claim_window with an
+        # AssertionError and hang the room.
+        tiles = data.get("tiles")
+        if (
+            not isinstance(tiles, list)
+            or len(tiles) != 2
+            or not all(isinstance(t, int) and 0 <= t < 34 for t in tiles)
+        ):
+            print(
+                f"[claim] seat={seat} rejected malformed chi decision tiles={tiles!r}",
+                file=sys.stderr,
+            )
+            return
+        decision = {"action": "chi", "tiles": list(tiles)}
     else:
         return
     hand.record_claim_decision(seat, decision)
@@ -413,7 +435,13 @@ async def _resolve_claim_window_when_ready(room: Room, hand) -> None:
 
 
 async def _resolve_claim_window(room: Room) -> None:
-    """Apply highest-priority claim, or auto-draw if no claims."""
+    """Apply highest-priority claim, or auto-draw if no claims.
+
+    Wrapped in a top-level try/except so a malformed claim payload (e.g.
+    chi with bad tiles → ValueError) cleans up the window instead of
+    leaving it stuck open with the polling task forever waiting on a
+    state that will never become resolvable.
+    """
     hand = room.session.current_hand
     if hand is None:
         return
@@ -421,63 +449,77 @@ async def _resolve_claim_window(room: Room) -> None:
     if cw is None:
         return
 
-    priority = {"hu": 3, "peng": 2, "gang_open": 2, "chi": 1, "pass": 0}
-    actionable = [
-        (seat, d) for seat, d in cw.decisions.items()
-        if d and d.get("action") and d["action"] != "pass"
-    ]
+    try:
+        priority = {"hu": 3, "peng": 2, "gang_open": 2, "chi": 1, "pass": 0}
+        actionable = [
+            (seat, d) for seat, d in cw.decisions.items()
+            if d and d.get("action") and d["action"] != "pass"
+        ]
 
-    # Multi-winner hu: all hu decisions share same priority.
-    hu_winners = [seat for seat, d in actionable if d["action"] == "hu"]
-    if hu_winners:
-        hand.close_claim_window()
-        if len(hu_winners) == 1:
-            hand.apply_claim(hu_winners[0], "hu")
-            await _settle_single_or_multi(room)
+        # Multi-winner hu: all hu decisions share same priority.
+        hu_winners = [seat for seat, d in actionable if d["action"] == "hu"]
+        if hu_winners:
+            hand.close_claim_window()
+            if len(hu_winners) == 1:
+                hand.apply_claim(hu_winners[0], "hu")
+                await _settle_single_or_multi(room)
+                return
+            # Multi-winner.
+            await _emit_multi_winner_settlement(room, hu_winners)
             return
-        # Multi-winner.
-        await _emit_multi_winner_settlement(room, hu_winners)
-        return
 
-    actionable.sort(key=lambda x: priority.get(x[1]["action"], 0), reverse=True)
-    if actionable:
-        seat, dec = actionable[0]
-        hand.close_claim_window()
-        hand.apply_claim(seat, dec["action"], tiles=dec.get("tiles"))
-        if hand.phase.value == "SETTLEMENT":
-            await _settle_single_or_multi(room)
-            return
-        await _broadcast_state(room)
-        # After gang_open the claimer owes a replacement draw. Auto-draw it
-        # (for both humans and bots) so nobody has to click "Draw (back)".
-        if hand.must_draw_back:
-            if room.is_bot_seat(seat):
-                await _maybe_schedule_bot_turn(room)
+        actionable.sort(key=lambda x: priority.get(x[1]["action"], 0), reverse=True)
+        if actionable:
+            seat, dec = actionable[0]
+            hand.close_claim_window()
+            hand.apply_claim(seat, dec["action"], tiles=dec.get("tiles"))
+            if hand.phase.value == "SETTLEMENT":
+                await _settle_single_or_multi(room)
+                return
+            await _broadcast_state(room)
+            # After gang_open the claimer owes a replacement draw. Auto-draw it
+            # (for both humans and bots) so nobody has to click "Draw (back)".
+            if hand.must_draw_back:
+                if room.is_bot_seat(seat):
+                    await _maybe_schedule_bot_turn(room)
+                else:
+                    hand.draw_back()
+                    if hand.phase.value == "SETTLEMENT":
+                        await _settle_single_or_multi(room)
+                        return
+                    await _broadcast_state(room)
             else:
-                hand.draw_back()
-                if hand.phase.value == "SETTLEMENT":
-                    await _settle_single_or_multi(room)
-                    return
-                await _broadcast_state(room)
-        else:
-            await _maybe_schedule_bot_turn(room)
-        return
+                await _maybe_schedule_bot_turn(room)
+            return
 
-    # No claims — close window, advance to next player's draw.
-    hand.close_claim_window()
-    if hand.game.phase.name == "CLAIM_WINDOW":
-        from subterfuge.types import Action, ActionType
-        claims = {
-            i: Action(ActionType.PASS, player=i)
-            for i in range(4)
-            if i != hand.game.last_discard_player
-        }
-        was_robbing = cw.is_robbing_kong
-        hand.game.resolve_claim_window(claims)
-        if hand.game.phase.name == "DRAW" and was_robbing:
-            hand.must_draw_back = True
-    await _broadcast_state(room)
-    await _auto_draw_for_next(room)
+        # No claims — close window, advance to next player's draw.
+        hand.close_claim_window()
+        if hand.game.phase.name == "CLAIM_WINDOW":
+            from subterfuge.types import Action, ActionType
+            claims = {
+                i: Action(ActionType.PASS, player=i)
+                for i in range(4)
+                if i != hand.game.last_discard_player
+            }
+            was_robbing = cw.is_robbing_kong
+            hand.game.resolve_claim_window(claims)
+            if hand.game.phase.name == "DRAW" and was_robbing:
+                hand.must_draw_back = True
+        await _broadcast_state(room)
+        await _auto_draw_for_next(room)
+    except Exception as e:
+        print(f"[claim] _resolve_claim_window crashed: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        # Bail out cleanly — close any half-open window and broadcast so the
+        # next bot turn can be scheduled. The game state may now be wedged,
+        # but at least the room isn't permanently frozen.
+        try:
+            hand.close_claim_window()
+            await _broadcast_state(room)
+            if hand.game.phase.name == "DRAW":
+                await _auto_draw_for_next(room)
+        except Exception as cleanup_err:
+            print(f"[claim] cleanup also failed: {cleanup_err}", file=sys.stderr)
 
 
 async def _auto_draw_for_next(room: Room) -> None:

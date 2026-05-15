@@ -361,7 +361,10 @@ class Hand:
             return
 
         if claim_type == "chi":
-            assert tiles is not None and len(tiles) == 2
+            if tiles is None or len(tiles) != 2:
+                raise ValueError(
+                    f"chi requires exactly two hand tiles, got {tiles!r}"
+                )
             all_tiles = sorted(tiles + [tile])
             meld = Meld(
                 meld_type=MeldType.CHI,
