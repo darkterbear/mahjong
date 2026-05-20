@@ -53,6 +53,31 @@ def test_state_update_pending_claim_window() -> None:
     assert s["pending_claim_window"]["discarder_seat"] == 0
     assert s["pending_claim_window"]["tile"] == 0
     assert "peng" in s["pending_claim_window"]["your_options"]
+    # A timed (non-auto) seat has no_timer false and a live countdown.
+    assert s["pending_claim_window"]["you_no_timer"] is False
+    assert s["pending_claim_window"]["remaining_seconds"] > 0
+
+
+def test_pending_claim_window_no_timer_for_auto_waiter() -> None:
+    h = _setup_playing()
+    p2 = h.game.players[2]
+    while p2.hand[0] < 2:
+        p2.add_tile(0)
+    h.game.players[0].add_tile(0)
+    h.apply_discard(0)
+    h.open_claim_window(discarder=0, tile=0, is_robbing_kong=False)
+    # Mark seat 2 as a no-timer seat (as the driver does for next-player/Hu).
+    h.claim_window.waiters.add(2)
+    h.claim_window.auto_waiters.add(2)
+    s = build_state_update(
+        hand=h, viewer_seat=2, seats=["a", "b", "c", "d"],
+        cumulative_scores=[0, 0, 0, 0], round_wind_index=0, dealer_streak=0,
+    )
+    pcw = s["pending_claim_window"]
+    assert pcw["you_no_timer"] is True
+    assert pcw["you_waiting"] is True
+    # No-timer seats never show a countdown.
+    assert pcw["remaining_seconds"] == 0.0
 
 
 def test_state_update_wall_positions_present() -> None:

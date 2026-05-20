@@ -306,20 +306,32 @@ async def _start_claim_window_drivers(room: Room) -> None:
             continue
         decision = _bot_claim_decision(hand, seat)
         hand.record_claim_decision(seat, decision)
-    # Humans with HU as an option auto-enter Wait so they get unbounded
-    # time to consider a winning hand without being force-passed at 2s.
+    # No-timer seats get unbounded time and an explicit Pass instead of a
+    # countdown: any seat that can Hu, plus the next player (discarder+1) when
+    # they can chi/pong/gang — they're next to act anyway, so there's no rush.
     from server.protocol import AvailableAction
+    from server.hand import CLAIM_WINDOW_SECONDS
+    next_seat = (cw.discarder + 1) % 4
     for seat in list(cw.pending_seats):
         if room.is_bot_seat(seat):
             continue
-        if AvailableAction.HU in hand.available_actions(seat):
+        actions = hand.available_actions(seat)
+        can_hu = AvailableAction.HU in actions
+        is_next_claimer = seat == next_seat and any(
+            a in actions
+            for a in (AvailableAction.CHI, AvailableAction.PENG, AvailableAction.GANG_OPEN)
+        )
+        if can_hu or is_next_claimer:
             cw.waiters.add(seat)
-    # Every human (or remaining bot, defense-in-depth) is auto-passed at
-    # the 2s mark unless they explicitly claimed, pressed Wait, or were
-    # auto-waited above. The auto-pass task loops while the seat is in
-    # waiters, so it'll fire if/when they stop waiting without deciding.
+            cw.auto_waiters.add(seat)
+    # Timed seats (far-seat pong/gang) are auto-passed at the grace mark unless
+    # they explicitly claimed or pressed Wait. The task loops while the seat is
+    # in waiters, so it fires if/when they stop waiting without deciding.
+    # No-timer seats are skipped — they wait until they explicitly decide.
     for seat in list(cw.pending_seats):
-        asyncio.create_task(_auto_pass_after(room, hand, seat, 2.0))
+        if seat in cw.auto_waiters:
+            continue
+        asyncio.create_task(_auto_pass_after(room, hand, seat, CLAIM_WINDOW_SECONDS))
     # Schedule resolution timer.
     asyncio.create_task(_resolve_claim_window_when_ready(room, hand))
     # Push updated state with bots' decisions already applied.

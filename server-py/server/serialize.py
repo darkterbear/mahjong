@@ -271,6 +271,7 @@ def _pending_claim_window(hand: Hand, viewer_seat: int, seats: list[str] | None 
 
     you_decided = viewer_seat not in cw.pending_seats
     you_waiting = viewer_seat in cw.waiters
+    you_no_timer = viewer_seat in cw.auto_waiters
     waiters_list = sorted(cw.waiters)
 
     waiter_usernames: list[str] = []
@@ -285,7 +286,8 @@ def _pending_claim_window(hand: Hand, viewer_seat: int, seats: list[str] | None 
         "chi_combos": chi_combos,
         "you_decided": you_decided,
         "you_waiting": you_waiting,
+        "you_no_timer": you_no_timer,
         "waiters": waiters_list,
         "waiter_usernames": waiter_usernames,
-        "remaining_seconds": hand.claim_window_remaining_seconds(),
+        "remaining_seconds": 0.0 if you_waiting else hand.claim_window_remaining_seconds(),
     }

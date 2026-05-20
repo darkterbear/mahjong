@@ -17,6 +17,10 @@ from server.protocol import DiceResult, HandPhase, AvailableAction
 INITIAL_HAND_SIZE = 16
 DEAL_BATCH = 4
 
+# Grace period for timed claim seats (far-seat pong/gang). No-timer seats
+# (next player's claims and any Hu) are unbounded; see ClaimWindow.auto_waiters.
+CLAIM_WINDOW_SECONDS = 3.0
+
 
 @dataclass
 class ClaimWindow:
@@ -27,6 +31,11 @@ class ClaimWindow:
     pending_seats: set[int] = field(default_factory=set)
     decisions: dict[int, dict | None] = field(default_factory=dict)
     waiters: set[int] = field(default_factory=set)
+    # No-timer seats: the next player when they can chi/pong/gang, plus any
+    # seat that can Hu. They sit in `waiters` too (so the window can't
+    # time-resolve without them), but get unbounded time and an explicit Pass
+    # instead of a countdown.
+    auto_waiters: set[int] = field(default_factory=set)
 
 
 class Hand:
@@ -441,6 +450,7 @@ class Hand:
         cw.decisions[seat] = decision
         cw.pending_seats.discard(seat)
         cw.waiters.discard(seat)
+        cw.auto_waiters.discard(seat)
 
     def record_wait_toggle(self, seat: int, wait: bool) -> None:
         cw = self.claim_window
@@ -458,14 +468,14 @@ class Hand:
         return (
             len(cw.pending_seats) == 0
             and len(cw.waiters) == 0
-            and (time.monotonic() - cw.started_at) >= 2.0
+            and (time.monotonic() - cw.started_at) >= CLAIM_WINDOW_SECONDS
         )
 
     def claim_window_remaining_seconds(self) -> float:
         cw = self.claim_window
         if cw is None:
             return 0.0
-        return max(0.0, 2.0 - (time.monotonic() - cw.started_at))
+        return max(0.0, CLAIM_WINDOW_SECONDS - (time.monotonic() - cw.started_at))
 
     def close_claim_window(self) -> None:
         self.claim_window = None

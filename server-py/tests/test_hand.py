@@ -311,7 +311,7 @@ def test_claim_window_wait_blocks_resolution() -> None:
     h.record_claim_decision(1, {"action": "pass"})
     h.record_claim_decision(3, {"action": "pass"})
     h.record_wait_toggle(2, True)
-    # Force >= 2s elapsed (manipulate started_at).
+    # Force the grace window fully elapsed (manipulate started_at).
     h.claim_window.started_at = time.monotonic() - 5.0
     assert not h.claim_window_resolvable()  # waiters block
     h.record_wait_toggle(2, False)
@@ -321,17 +321,17 @@ def test_claim_window_wait_blocks_resolution() -> None:
     assert h.claim_window_resolvable()
 
 
-def test_claim_window_not_resolvable_before_2s() -> None:
+def test_claim_window_not_resolvable_within_grace() -> None:
     h = _fast_forward_to_playing()
     p = h.game.players[0]
     tile = next(t for t in range(34) if p.hand[t] > 0)
     h.apply_discard(tile)
     h.open_claim_window(discarder=0, tile=tile, is_robbing_kong=False)
-    # All seats pass immediately, but < 2s elapsed.
+    # All seats pass immediately, but the grace window hasn't elapsed.
     h.record_claim_decision(1, {"action": "pass"})
     h.record_claim_decision(2, {"action": "pass"})
     h.record_claim_decision(3, {"action": "pass"})
-    # pending_seats is empty, waiters empty, but < 2s → not resolvable yet.
+    # pending_seats empty, waiters empty, but within grace → not resolvable yet.
     assert not h.claim_window_resolvable()
 
 

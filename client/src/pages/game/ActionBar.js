@@ -30,6 +30,7 @@ const LABELS = {
   declare_concealed_gang: 'Concealed Kong',
   declare_added_gang: 'Add Kong',
   next_hand: 'Next Hand',
+  pass: 'Pass',
 };
 
 export function ActionBar({ state }) {
@@ -48,6 +49,7 @@ export function ActionBar({ state }) {
   const inClaimWindow = pcw != null;
   const youDecided = pcw?.you_decided;
   const youWaiting = pcw?.you_waiting;
+  const youNoTimer = pcw?.you_no_timer;
   const durationSeconds = pcw?.remaining_seconds || 0;
   const cwKey = pcw ? `${pcw.discarder_seat}-${pcw.tile}` : null;
 
@@ -99,10 +101,9 @@ export function ActionBar({ state }) {
 
     const handleClaimWindowClick = (opt) => {
       if (opt === 'chi') {
-        // Opening the picker should suspend the auto-pass timer until the
-        // player either picks a combo or cancels — otherwise they can be
-        // auto-passed mid-selection.
-        if (!youWaiting) claimWait(true);
+        // Chi is only ever offered to the next player, who is a no-timer seat,
+        // so there's no auto-pass to suspend — just open the combo picker.
+        if (!youNoTimer && !youWaiting) claimWait(true);
         setPicker('chi');
       } else {
         claimDecision(opt);
@@ -120,23 +121,32 @@ export function ActionBar({ state }) {
             {LABELS[opt] || opt}
           </TimedButton>
         ))}
-        <TimedButton
-          key={`wait-${cwKey}`}
-          durationSeconds={durationSeconds}
-          className={youWaiting ? 'wait-active' : ''}
-          onClick={() => claimWait(!youWaiting)}
-        >
-          {youWaiting ? 'Stop waiting' : 'Wait'}
-        </TimedButton>
+        {youNoTimer ? (
+          <TimedButton
+            key={`pass-${cwKey}`}
+            durationSeconds={0}
+            onClick={() => claimDecision('pass')}
+          >
+            {LABELS.pass}
+          </TimedButton>
+        ) : (
+          <TimedButton
+            key={`wait-${cwKey}`}
+            durationSeconds={durationSeconds}
+            className={youWaiting ? 'wait-active' : ''}
+            onClick={() => claimWait(!youWaiting)}
+          >
+            {youWaiting ? 'Stop waiting' : 'Wait'}
+          </TimedButton>
+        )}
       </div>
     );
   }
 
   // Chi picker (within claim window).
   if (inClaimWindow && picker === 'chi') {
-    // Closing the picker keeps Wait on so the user returns to the regular
-    // claim-window buttons and can still peng/hu/etc. — they explicitly press
-    // "Stop waiting" if they're done deciding.
+    // Cancelling returns to the regular claim-window buttons (the next player
+    // is a no-timer seat, so they can still peng/hu/etc. or explicitly Pass).
     const onCancelChi = () => setPicker(null);
     return (
       <div className="action-bar">
